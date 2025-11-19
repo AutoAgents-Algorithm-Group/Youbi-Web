@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/-Youbi-000000?style=for-the-badge&labelColor=faf9f6&color=faf9f6&logoColor=000000" alt="Youbi" width="280"/>
+<img src="https://img.shields.io/badge/-Youbi Web-000000?style=for-the-badge&labelColor=faf9f6&color=faf9f6&logoColor=000000" alt="Youbi" width="280"/>
 
 <h4>AI 驱动的 TikTok KOL 赋能平台</h4>
 
