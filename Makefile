@@ -27,7 +27,8 @@ dev:
 	@echo ""
 	@echo "Press Ctrl+C to stop both services"
 	@trap 'kill %1 %2' INT; \
-	cd backend && uvicorn API.main:app --host 0.0.0.0 --port 8000 --reload & \
+	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+	# cd backend && uvicorn API.main:app --host 0.0.0.0 --port 8000 --reload & \
 	cd frontend && npm run dev & \
 	wait
 

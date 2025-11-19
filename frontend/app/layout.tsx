@@ -7,8 +7,8 @@ import { Toaster } from "react-hot-toast";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "My AI App",
-  description: "This is my ai app",
+  title: "Youbi - You be yourself",
+  description: "Youbi is a platform that helps you be yourself on TikTok",
 };
 
 export default function RootLayout({
