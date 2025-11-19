@@ -26,8 +26,8 @@ dev:
 	@echo "📚 API Documentation at http://localhost:8000/docs"
 	@echo ""
 	@echo "Press Ctrl+C to stop both services"
+	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true
 	@trap 'kill %1 %2' INT; \
-	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true && \
 	cd frontend && npm run dev & \
 	wait
 
