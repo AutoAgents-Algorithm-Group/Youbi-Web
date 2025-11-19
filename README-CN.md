@@ -6,10 +6,9 @@
 
 [English](README.md) | 简体中文
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="media/dark_license.svg" />
-  <img alt="License MIT" src="media/light_license.svg" />
-</picture>
+<a href="LICENSE">
+  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" />
+</a>
 
 </div>
 
