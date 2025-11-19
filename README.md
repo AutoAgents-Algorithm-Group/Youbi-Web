@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/-Youbi-000000?style=for-the-badge&labelColor=faf9f6&color=faf9f6&logoColor=000000" alt="Youbi" width="280"/>
+<img src="https://img.shields.io/badge/-Youbi Web-000000?style=for-the-badge&labelColor=faf9f6&color=faf9f6&logoColor=000000" alt="Youbi" width="280"/>
 
 <h4>AI-Powered TikTok KOL Empowerment Platform</h4>
 
@@ -59,8 +59,8 @@ Youbi revolutionizes how TikTok creators manage and optimize their content. By l
 **Get Started**
 ```bash
 # 1. Clone the repository
-git clone https://github.com/AutoAgents-Algorithm-Group/Hera.git
-cd Hera
+git clone https://github.com/AutoAgents-Algorithm-Group/Youbi-Web.git
+cd Youbi-Web
 
 # 2. Make setup script executable and run it
 chmod +x setup.sh
@@ -73,7 +73,7 @@ make dev
 ## Deployment
 **Docker**
 ```bash
-cd Hera
+cd Youbi-Web
 docker compose -f docker/docker-compose.yml up -d
 ```
 
@@ -83,8 +83,8 @@ docker compose -f docker/docker-compose.yml up -d
 docker compose -f docker/docker-compose.yml logs -f app
 
 # Stop and remove old containers
-docker stop hera && docker rm hera
-docker rmi hera-app
+docker stop youbi && docker rm youbi
+docker rmi youbi-app
 ```
 
 ## Contributing

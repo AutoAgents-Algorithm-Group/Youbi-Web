@@ -59,8 +59,8 @@ Youbi 革新了 TikTok 创作者管理和优化内容的方式。通过利用先
 **开始使用**
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/AutoAgents-Algorithm-Group/Hera.git
-cd Hera
+git clone https://github.com/AutoAgents-Algorithm-Group/Youbi-Web.git
+cd Youbi-Web
 
 # 2. 使设置脚本可执行并运行
 chmod +x setup.sh
@@ -73,7 +73,7 @@ make dev
 ## 部署
 **Docker**
 ```bash
-cd Hera
+cd Youbi-Web
 docker compose -f docker/docker-compose.yml up -d
 ```
 
@@ -83,8 +83,8 @@ docker compose -f docker/docker-compose.yml up -d
 docker compose -f docker/docker-compose.yml logs -f app
 
 # 停止并删除旧容器
-docker stop hera && docker rm hera
-docker rmi hera-app
+docker stop youbi && docker rm youbi
+docker rmi youbi-app
 ```
 
 ## 贡献
