@@ -9,22 +9,22 @@ export default function BottomNav() {
   
   const tabs = [
     {
-      name: '首页',
-      href: '/',
+      name: 'Create',
+      href: '/create',
       icon: Home,
-      active: pathname === '/'
+      active: pathname === '/create' || pathname === '/'
     },
     {
-      name: '探索',
+      name: 'Explore',
       href: '/explorer',
       icon: Compass,
       active: pathname === '/explorer'
     },
     {
-      name: '我的',
-      href: '/profile/taylorswift',
+      name: 'Me',
+      href: '/me',
       icon: User,
-      active: pathname.startsWith('/profile')
+      active: pathname === '/me'
     }
   ]
 

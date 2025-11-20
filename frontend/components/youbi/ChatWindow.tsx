@@ -102,28 +102,28 @@ function ImagePreview({ imageUrl }: { imageUrl: string }) {
       {error ? (
         <div className="flex flex-col items-center justify-center h-32 text-gray-500 p-4">
           <ImageIcon className="w-8 h-8 mb-2" />
-          <p className="text-xs text-center">图片加载失败</p>
+          <p className="text-xs text-center">Failed to load image</p>
           <a 
             href={originalUrl} 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-xs text-primary hover:underline mt-2"
           >
-            在新标签页中打开原图
+            Open original in new tab
           </a>
         </div>
       ) : (
         <img
           src={imageUrl}
-          alt="美化后的封面"
+          alt="Enhanced cover"
           className="w-full h-auto rounded-lg"
           loading="eager"
           onLoad={() => {
-            console.log('✅ 图片加载成功:', imageUrl)
+            console.log('✅ Image loaded successfully:', imageUrl)
             setLoading(false)
           }}
           onError={(e) => {
-            console.error('❌ 图片加载失败:', imageUrl, e)
+            console.error('❌ Failed to load image:', imageUrl, e)
             setLoading(false)
             setError(true)
           }}

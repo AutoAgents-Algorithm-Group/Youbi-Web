@@ -25,7 +25,7 @@ export default function Explorer() {
       setPosts(prev => page === 1 ? newPosts : [...prev, ...newPosts])
       setHasMore(pagination.page < pagination.totalPages)
     } catch (error) {
-      console.error('获取帖子失败:', error)
+      console.error('Failed to fetch posts:', error)
     } finally {
       setLoading(false)
     }
@@ -33,10 +33,10 @@ export default function Explorer() {
 
   const handleLike = async (postId: string) => {
     try {
-      const userId = 'current_user' // 实际应用中从认证状态获取
+      const userId = 'current_user' // Should get from auth state in production
       await explorerApi.likePost(postId, userId)
       
-      // 更新本地状态
+      // Update local state
       setPosts(prev =>
         prev.map(post => {
           if (post._id === postId) {
@@ -52,7 +52,7 @@ export default function Explorer() {
         })
       )
     } catch (error) {
-      console.error('点赞失败:', error)
+      console.error('Failed to like post:', error)
     }
   }
 
@@ -60,7 +60,7 @@ export default function Explorer() {
     try {
       const commentData = {
         userId: 'current_user',
-        username: '当前用户',
+        username: 'Current User',
         avatar: 'https://i.pravatar.cc/150?u=current_user',
         content,
         parentCommentId
@@ -68,14 +68,14 @@ export default function Explorer() {
 
       const response = await explorerApi.addComment(postId, commentData)
       
-      // 更新本地状态
+      // Update local state
       setPosts(prev =>
         prev.map(post =>
           post._id === postId ? response.data.post : post
         )
       )
     } catch (error) {
-      console.error('评论失败:', error)
+      console.error('Failed to comment:', error)
     }
   }
 
@@ -88,10 +88,10 @@ export default function Explorer() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto p-4">
-        {/* 页面标题 */}
+        {/* Page Title */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">探索社区</h1>
-          <p className="text-gray-600 mt-1">发现更多精彩的 AI 美化作品</p>
+          <h1 className="text-2xl font-bold text-gray-900">Explore Community</h1>
+          <p className="text-gray-600 mt-1">Discover more amazing AI enhanced works</p>
         </div>
 
         {/* 瀑布流布局 */}
@@ -101,7 +101,7 @@ export default function Explorer() {
           </div>
         ) : posts.length === 0 ? (
           <div className="text-center py-20 text-gray-500">
-            <p className="text-lg">还没有作品，快来成为第一个分享的人吧！</p>
+            <p className="text-lg">No posts yet. Be the first to share!</p>
           </div>
         ) : (
           <Masonry
@@ -120,7 +120,7 @@ export default function Explorer() {
           </Masonry>
         )}
 
-        {/* 加载更多 */}
+        {/* Load More */}
         {hasMore && posts.length > 0 && (
           <div className="text-center py-8">
             <button
@@ -131,7 +131,7 @@ export default function Explorer() {
               disabled={loading}
               className="px-6 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition disabled:opacity-50"
             >
-              {loading ? '加载中...' : '加载更多'}
+              {loading ? 'Loading...' : 'Load More'}
             </button>
           </div>
         )}

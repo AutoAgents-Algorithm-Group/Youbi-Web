@@ -49,11 +49,3 @@ export function generateColorfulPlaceholder(index: number, text: string = `Video
   const theme = colorThemes[index % colorThemes.length];
   return generatePlaceholderImage(400, 600, theme.bg, theme.fg, text);
 }
-
-/**
- * 为视频封面生成占位图
- */
-export function generateVideoCover(index: number): string {
-  return generateColorfulPlaceholder(index, `Video ${index + 1}`);
-}
-

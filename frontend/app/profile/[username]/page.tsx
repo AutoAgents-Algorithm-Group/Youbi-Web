@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { Send, Sparkles } from 'lucide-react'
+import { Send, Sparkles, MessageCircle, X, Minimize2 } from 'lucide-react'
 import { profileApi, imageApi } from '@/lib/api-client'
 import type { TikTokProfile, ChatMessage } from '@/lib/types/youbi'
 import TikTokCard from '@/components/youbi/TikTokCard'
@@ -14,16 +14,21 @@ export default function Profile() {
   
   const [profile, setProfile] = useState<TikTokProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       type: 'system',
-      content: '你好！我是你的 AI 助手，可以帮你美化封面或者聊天互动 ✨',
+      content: 'Hello! I\'m your AI assistant, I can help you enhance covers or chat with you ✨',
       timestamp: new Date()
     }
   ])
   const [inputMessage, setInputMessage] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [selectedVideos, setSelectedVideos] = useState<string[]>([])
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (username) {
@@ -34,18 +39,29 @@ export default function Profile() {
   const fetchProfile = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await profileApi.getProfile(username)
       setProfile(response.data.profile)
-    } catch (error) {
-      console.error('获取 Profile 失败:', error)
-      addMessage('system', '获取 TikTok 信息失败，请稍后重试')
+    } catch (error: any) {
+      console.error('Failed to fetch profile:', error)
+      const errorMessage = error.response?.data?.message || 'Failed to fetch TikTok info, please try again later'
+      const errorDetails = error.response?.data?.details || []
+      
+      setError(errorMessage)
+      
+      // Show error details in chat window
+      addMessage('system', `❌ ${errorMessage}`)
+      if (errorDetails.length > 0) {
+        addMessage('system', `Details:\n${errorDetails.join('\n')}`)
+      }
+      addMessage('system', '💡 Tip: Please ensure you have a valid RapidAPI key configured, or try another username.')
     } finally {
       setLoading(false)
     }
   }
 
   const addMessage = (type: 'user' | 'bot' | 'system', content: string, imageUrl?: string) => {
-    console.log('💬 添加消息:', { type, content, imageUrl })
+    console.log('💬 Add message:', { type, content, imageUrl })
     const newMessage: ChatMessage = {
       id: `${Date.now()}_${Math.random()}`,
       type,
@@ -56,72 +72,175 @@ export default function Profile() {
     setMessages(prev => [...prev, newMessage])
   }
 
-  const handleBeautifyCover = async () => {
-    if (!profile || !profile.videos[0]) {
-      addMessage('system', '没有找到可用的封面图片')
+  const toggleVideoSelection = (videoId: string) => {
+    setSelectedVideos(prev => {
+      if (prev.includes(videoId)) {
+        return prev.filter(id => id !== videoId)
+      } else {
+        return [...prev, videoId]
+      }
+    })
+  }
+
+  const handleBeautifySelected = async () => {
+    if (!profile || selectedVideos.length === 0) {
+      addMessage('system', 'Please select videos to enhance')
       return
     }
 
     setIsProcessing(true)
-    addMessage('user', '一键美化封面')
-    addMessage('bot', '正在为你美化封面，请稍候... 🎨')
+    setIsChatOpen(true)
+    addMessage('user', `Batch enhance ${selectedVideos.length} covers`)
+    addMessage('bot', `Enhancing ${selectedVideos.length} covers for you, please wait... 🎨`)
+
+    let successCount = 0
+    let failCount = 0
+
+    for (let i = 0; i < selectedVideos.length; i++) {
+      const videoId = selectedVideos[i]
+      const videoIndex = profile.videos.findIndex(v => v.id === videoId)
+      
+      if (videoIndex === -1) continue
+
+      const video = profile.videos[videoIndex]
+      
+      try {
+        addMessage('bot', `[${i + 1}/${selectedVideos.length}] Enhancing: ${video.title || 'Video'}`)
+
+        const originalCover = video.cover
+        const coverImage = originalCover.includes('/api/proxy-image?url=')
+          ? decodeURIComponent(originalCover.split('url=')[1]?.split('&')[0] || originalCover)
+          : originalCover
+        
+        const prompt = 'Dramatically enhance the color saturation and contrast of this image, increase vibrancy and lighting effects to make the scene more vivid and impactful. Enhance detail clarity and sharpness. Add eye-catching and attractive English text titles or slogans on the image. The text should be large and clear, with prominent colors, positioned appropriately to attract audience attention. The text content should be short, powerful, and engaging.'
+        
+        const editResponse = await imageApi.editImage(coverImage, prompt)
+        const taskId = editResponse.data.taskId
+
+        // 轮询查询结果
+        let attempts = 0
+        const maxAttempts = 30
+        let beautified = false
+
+        while (attempts < maxAttempts && !beautified) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          try {
+            const resultResponse = await imageApi.getTaskResult(taskId)
+            const { status, images } = resultResponse.data
+
+            if (status === 'TASK_STATUS_SUCCEED' && images.length > 0) {
+              const beautifiedImage = images[0].image_url
+              const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(beautifiedImage)}&t=${Date.now()}`
+              
+              setProfile(prev => {
+                if (!prev) return prev
+                const updatedVideos = [...prev.videos]
+                updatedVideos[videoIndex] = {
+                  ...updatedVideos[videoIndex],
+                  cover: proxyUrl
+                }
+                return { ...prev, videos: updatedVideos }
+              })
+              
+              successCount++
+              beautified = true
+              addMessage('bot', `✅ [${i + 1}/${selectedVideos.length}] Enhanced successfully`)
+            } else if (status === 'TASK_STATUS_FAILED') {
+              failCount++
+              beautified = true
+              addMessage('bot', `❌ [${i + 1}/${selectedVideos.length}] Enhancement failed`)
+            }
+          } catch (error) {
+            // 继续轮询
+          }
+          
+          attempts++
+        }
+
+        if (!beautified) {
+          failCount++
+          addMessage('bot', `⏱️ [${i + 1}/${selectedVideos.length}] Enhancement timeout`)
+        }
+      } catch (error) {
+        failCount++
+        addMessage('bot', `❌ [${i + 1}/${selectedVideos.length}] Enhancement failed`)
+      }
+    }
+
+    addMessage('bot', `🎉 Batch enhancement complete! Success: ${successCount}, Failed: ${failCount}`)
+    setIsProcessing(false)
+    setIsSelectionMode(false)
+    setSelectedVideos([])
+  }
+
+  const handleBeautifyCover = async () => {
+    if (!profile || !profile.videos[0]) {
+      addMessage('system', 'No cover image found')
+      return
+    }
+
+    setIsProcessing(true)
+    setIsChatOpen(true)
+    addMessage('user', 'Enhance cover')
+    addMessage('bot', 'Enhancing your cover, please wait... 🎨')
 
     try {
       const originalCover = profile.videos[0].cover
       
-      console.log('🎨 开始美化封面:', {
-        原始封面URL: originalCover,
-        是否使用代理: originalCover.includes('/api/proxy-image')
+      console.log('🎨 Start enhancing cover:', {
+        originalCoverURL: originalCover,
+        usingProxy: originalCover.includes('/api/proxy-image')
       })
       
-      // 如果是代理 URL，提取原始 URL
+      // If it's a proxy URL, extract the original URL
       const coverImage = originalCover.includes('/api/proxy-image?url=')
         ? decodeURIComponent(originalCover.split('url=')[1]?.split('&')[0] || originalCover)
         : originalCover
       
-      console.log('📤 提交美化任务:', coverImage)
+      console.log('📤 Submit enhancement task:', coverImage)
       
-      const prompt = '大幅增强这张图片的色彩饱和度和对比度，增加鲜艳度和光影效果，让画面更加生动有冲击力，增强细节清晰度和锐度。同时在图片上添加醒目的吸引人的中文文字标题或标语，文字要大而清晰，颜色鲜明突出，位置合理，能够吸引观众注意力。文字内容要简短有力，富有感染力'
+      const prompt = 'Dramatically enhance the color saturation and contrast of this image, increase vibrancy and lighting effects to make the scene more vivid and impactful. Enhance detail clarity and sharpness. Add eye-catching and attractive English text titles or slogans on the image. The text should be large and clear, with prominent colors, positioned appropriately to attract audience attention. The text content should be short, powerful, and engaging.'
       
-      // 提交图像编辑任务
+      // Submit image editing task
       const editResponse = await imageApi.editImage(coverImage, prompt)
       const taskId = editResponse.data.taskId
       
-      console.log('✅ 任务ID:', taskId)
+      console.log('✅ Task ID:', taskId)
 
-      // 轮询查询结果
+      // Poll for result
       let attempts = 0
-      const maxAttempts = 30 // 最多等待30秒
+      const maxAttempts = 30 // Max wait 30 seconds
       
       const checkTask = async () => {
         try {
           const resultResponse = await imageApi.getTaskResult(taskId)
           const { status, images, progress } = resultResponse.data
           
-          console.log('📋 任务状态查询:', { 
-            状态: status, 
-            进度: progress,
-            图片数量: images?.length || 0,
-            完整响应: resultResponse.data
+          console.log('📋 Task status query:', { 
+            status: status, 
+            progress: progress,
+            imageCount: images?.length || 0,
+            fullResponse: resultResponse.data
           })
 
           if (status === 'TASK_STATUS_SUCCEED' && images.length > 0) {
             const beautifiedImage = images[0].image_url
             
-            // 使用代理 URL 解决跨域问题
+            // Use proxy URL to solve CORS issues
             const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(beautifiedImage)}&t=${Date.now()}`
             
-            console.log('✅ 图片美化成功！', {
-              任务状态: status,
-              原始图片URL: beautifiedImage,
-              代理URL: proxyUrl,
-              图片是否改变: !originalCover.includes(beautifiedImage)
+            console.log('✅ Image enhancement successful!', {
+              taskStatus: status,
+              originalImageURL: beautifiedImage,
+              proxyURL: proxyUrl,
+              imageChanged: !originalCover.includes(beautifiedImage)
             })
             
-            console.log('📊 对比信息:', {
-              旧封面: originalCover.substring(0, 100) + '...',
-              新封面: proxyUrl.substring(0, 100) + '...',
-              是否相同: originalCover === proxyUrl
+            console.log('📊 Comparison info:', {
+              oldCover: originalCover.substring(0, 100) + '...',
+              newCover: proxyUrl.substring(0, 100) + '...',
+              isSame: originalCover === proxyUrl
             })
             
             setProfile(prev => {
@@ -132,9 +251,9 @@ export default function Profile() {
                 ...updatedVideos[0],
                 cover: proxyUrl
               }
-              console.log('🔄 封面更新:', {
-                更新前: oldCover.substring(0, 50) + '...',
-                更新后: proxyUrl.substring(0, 50) + '...'
+              console.log('🔄 Cover update:', {
+                before: oldCover.substring(0, 50) + '...',
+                after: proxyUrl.substring(0, 50) + '...'
               })
               return {
                 ...prev,
@@ -142,38 +261,32 @@ export default function Profile() {
               }
             })
             
-            // 添加对比信息到消息中
-            const comparisonMessage = `✨ 封面美化完成！
-
-📊 对比信息：
-原始图片: ${originalCover.includes('placeholder') ? '占位图' : '真实封面'}
-美化后图片: ${beautifiedImage.substring(0, 60)}...
-
-🎯 已自动替换第一个作品封面，向上滚动查看效果！`
+            // Add completion message
+            const comparisonMessage = `✨ Cover enhancement complete!`
             
             addMessage('bot', comparisonMessage, proxyUrl)
             setIsProcessing(false)
           } else if (status === 'TASK_STATUS_FAILED') {
-            addMessage('bot', '抱歉，美化失败了，请稍后重试')
+            addMessage('bot', 'Sorry, enhancement failed. Please try again later')
             setIsProcessing(false)
           } else if (attempts < maxAttempts) {
             attempts++
-            setTimeout(checkTask, 1000) // 1秒后重试
+            setTimeout(checkTask, 1000) // Retry after 1 second
           } else {
-            addMessage('bot', '美化超时，请稍后重试')
+            addMessage('bot', 'Enhancement timeout, please try again later')
             setIsProcessing(false)
           }
         } catch (error) {
-          console.error('查询任务失败:', error)
-          addMessage('bot', '查询美化结果失败')
+          console.error('Failed to query task:', error)
+          addMessage('bot', 'Failed to query enhancement result')
           setIsProcessing(false)
         }
       }
 
-      setTimeout(checkTask, 1000) // 1秒后开始查询
+      setTimeout(checkTask, 1000) // Start querying after 1 second
     } catch (error) {
-      console.error('美化封面失败:', error)
-      addMessage('bot', '美化封面失败，请稍后重试')
+      console.error('Failed to enhance cover:', error)
+      addMessage('bot', 'Failed to enhance cover, please try again later')
       setIsProcessing(false)
     }
   }
@@ -190,66 +303,131 @@ export default function Profile() {
       const response = await profileApi.sendMessage(username, userMessage)
       addMessage('bot', response.data.response.message)
     } catch (error) {
-      console.error('发送消息失败:', error)
-      addMessage('bot', '收到！我正在学习如何更好地回复你 🤖')
+      console.error('Failed to send message:', error)
+      addMessage('bot', 'Got it! I\'m learning how to better respond to you 🤖')
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* 上半屏 - TikTok Profile 卡片 (55%) */}
-      <div className="h-[55vh] overflow-y-auto bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 relative">
+      {/* 顶部 Header 区域 */}
+      {profile && !loading && !error && (
+        <div className="fixed top-0 left-0 right-0 h-16 bg-white z-40">
+          <div className="max-w-7xl mx-auto h-full px-4 flex items-center justify-between">
+            {/* Left: Select button */}
+            <button
+              onClick={() => {
+                setIsSelectionMode(!isSelectionMode)
+                setSelectedVideos([])
+              }}
+              className="px-5 py-2 bg-white text-primary border-2 border-primary rounded-full font-medium hover:bg-primary hover:text-white transition"
+            >
+              {isSelectionMode ? 'Cancel' : 'Select'}
+            </button>
+
+            {/* Right: Batch enhance button (only show in selection mode) */}
+            {isSelectionMode && selectedVideos.length > 0 && (
+              <button
+                onClick={handleBeautifySelected}
+                disabled={isProcessing}
+                className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full font-medium hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Enhance {selectedVideos.length} covers</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 全屏 Profile 卡片 - 添加顶部 padding */}
+      <div className={`min-h-screen overflow-y-auto bg-white pb-20 ${profile && !loading && !error ? 'pt-16' : ''}`}>
         {loading ? (
-          <div className="h-full flex items-center justify-center">
+          <div className="h-screen flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
+        ) : error ? (
+          <div className="h-screen flex items-center justify-center px-6">
+            <div className="max-w-md text-center">
+              <div className="text-6xl mb-4">😔</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Unable to fetch user data</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button
+                onClick={fetchProfile}
+                className="px-6 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
         ) : profile ? (
-          <TikTokCard profile={profile} />
+          <TikTokCard 
+            profile={profile}
+            isSelectionMode={isSelectionMode}
+            selectedVideos={selectedVideos}
+            onToggleSelection={toggleVideoSelection}
+          />
         ) : (
-          <div className="h-full flex items-center justify-center text-gray-500">
-            无法加载 Profile
+          <div className="h-screen flex items-center justify-center text-gray-500">
+            Unable to load profile
           </div>
         )}
       </div>
 
-      {/* 下半屏 - 对话窗口 (45%) */}
-      <div className="h-[45vh] flex flex-col bg-white">
-        {/* 快捷操作按钮 */}
-        <div className="flex gap-2 p-3 border-b border-gray-100 bg-gray-50">
-          <button
-            onClick={handleBeautifyCover}
-            disabled={isProcessing || !profile}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full text-sm font-medium hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Sparkles className="w-4 h-4" />
-            一键美化封面
-          </button>
-        </div>
+      {/* 右下角浮窗按钮 */}
+      {!isChatOpen && (
+        <button
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-20 right-6 w-16 h-16 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-110 flex items-center justify-center z-50"
+        >
+          <MessageCircle className="w-8 h-8" />
+        </button>
+      )}
 
-        {/* 聊天消息区域 */}
-        <ChatWindow messages={messages} />
-
-        {/* 输入框 */}
-        <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-100">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="输入消息..."
-              disabled={isProcessing}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100"
-            />
+      {/* 聊天浮窗 */}
+      {isChatOpen && (
+        <div className="fixed bottom-20 right-6 w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-3rem)] bg-white rounded-2xl shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-4 duration-300">
+          {/* Floating window title bar */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-primary to-pink-500 text-white rounded-t-2xl">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5" />
+              <h3 className="font-semibold">AI Assistant</h3>
+            </div>
             <button
-              type="submit"
-              disabled={!inputMessage.trim() || isProcessing}
-              className="p-2 bg-primary text-white rounded-full hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setIsChatOpen(false)}
+              className="p-1 hover:bg-white/20 rounded-full transition"
             >
-              <Send className="w-5 h-5" />
+              <X className="w-5 h-5" />
             </button>
           </div>
-        </form>
-      </div>
+
+          {/* Chat message area */}
+          <div className="flex-1 overflow-hidden">
+            <ChatWindow messages={messages} />
+          </div>
+
+          {/* Input box */}
+          <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Type a message..."
+                disabled={isProcessing}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 text-sm"
+              />
+              <button
+                type="submit"
+                disabled={!inputMessage.trim() || isProcessing}
+                className="p-2 bg-primary text-white rounded-full hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }

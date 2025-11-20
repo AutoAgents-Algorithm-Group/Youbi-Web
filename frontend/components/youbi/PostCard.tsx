@@ -53,7 +53,7 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
                 onClick={() => handleReply(comment._id!, comment.username)}
                 className="text-xs text-gray-500 hover:text-primary"
               >
-                回复
+                Reply
               </button>
             )}
           </div>
@@ -85,19 +85,19 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
         </div>
       </div>
 
-      {/* 对比图片 */}
+      {/* Comparison Images */}
       <div className="relative">
         <div className="grid grid-cols-2">
           <div className="relative">
-            <img src={post.originalImage} alt="原图" className="w-full h-auto" />
+            <img src={post.originalImage} alt="Original" className="w-full h-auto" />
             <span className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-              原图
+              Original
             </span>
           </div>
           <div className="relative">
-            <img src={post.editedImage} alt="美化后" className="w-full h-auto" />
+            <img src={post.editedImage} alt="Enhanced" className="w-full h-auto" />
             <span className="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">
-              美化后
+              Enhanced
             </span>
           </div>
         </div>
@@ -147,13 +147,13 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
             </div>
           )}
 
-          {/* 评论输入框 */}
+          {/* Comment Input */}
           <form onSubmit={handleSubmitComment} className="flex gap-2">
             <input
               type="text"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              placeholder={replyTo ? `回复 @${replyTo.username}` : '添加评论...'}
+              placeholder={replyTo ? `Reply to @${replyTo.username}` : 'Add a comment...'}
               className="flex-1 px-3 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
             {replyTo && (
@@ -162,7 +162,7 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
                 onClick={() => setReplyTo(null)}
                 className="text-xs text-gray-500 hover:text-gray-700"
               >
-                取消
+                Cancel
               </button>
             )}
             <button
