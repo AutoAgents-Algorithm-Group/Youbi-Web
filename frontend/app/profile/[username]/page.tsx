@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { Send, Sparkles, MessageCircle, X, Minimize2 } from 'lucide-react'
+import { Send, Sparkles, MessageCircle, X, Minimize2, Upload } from 'lucide-react'
 import { profileApi, imageApi } from '@/lib/api-client'
 import type { TikTokProfile, ChatMessage } from '@/lib/types/youbi'
 import TikTokCard from '@/components/youbi/TikTokCard'
@@ -19,7 +19,7 @@ export default function Profile() {
     {
       id: '1',
       type: 'system',
-      content: 'Hello! I\'m your AI assistant, I can help you enhance covers or chat with you ✨',
+      content: 'Hello! I\'m your AI assistant. I can help you enhance covers or chat with you ✨',
       timestamp: new Date()
     }
   ])
@@ -28,7 +28,33 @@ export default function Profile() {
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedVideos, setSelectedVideos] = useState<string[]>([])
+  const [selectedPromptTemplate, setSelectedPromptTemplate] = useState('default')
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Beautify prompt templates
+  const promptTemplates = {
+    default: {
+      name: 'Default Enhancement',
+      prompt: 'Dramatically enhance the color saturation and contrast of this image, increase vibrancy and lighting effects to make the scene more vivid and impactful. Enhance detail clarity and sharpness. Add eye-catching and attractive English text titles or slogans on the image. The text should be large and clear, with prominent colors, positioned appropriately to attract audience attention. The text content should be short, powerful, and engaging.'
+    },
+    vibrant: {
+      name: 'Vibrant Colors',
+      prompt: 'Transform this image into a vibrant masterpiece! Boost color saturation dramatically, enhance lighting to make it pop, and add bold, attention-grabbing text overlay. Make it impossible to scroll past!'
+    },
+    professional: {
+      name: 'Professional Polish',
+      prompt: 'Give this image a professional polish with balanced color grading, enhanced clarity, and elegant text overlay. Create a sophisticated look that commands attention while maintaining authenticity.'
+    },
+    dramatic: {
+      name: 'Dramatic Impact',
+      prompt: 'Create maximum dramatic impact! Amplify contrast, add cinematic lighting effects, and bold typography that screams for attention. Make every pixel work to stop the scroll!'
+    },
+    minimal: {
+      name: 'Minimal Clean',
+      prompt: 'Apply clean, minimal enhancements with subtle color correction and refined details. Add simple, elegant text that complements the image without overwhelming it.'
+    }
+  }
 
   useEffect(() => {
     if (username) {
@@ -82,6 +108,22 @@ export default function Profile() {
     })
   }
 
+  const getRandomEnhancingMessage = () => {
+    const messages = [
+      '🎨 Sprinkling some magic dust on your cover...',
+      '✨ Making your thumbnail irresistible...',
+      '🚀 Boosting those colors to the next level...',
+      '💫 Adding that wow factor...',
+      '🎭 Transforming pixels into art...',
+      '🌟 Cranking up the visual appeal...',
+      '🎪 Making your content pop like fireworks...',
+      '🔥 Heating up those colors...',
+      '💎 Polishing your masterpiece...',
+      '🎯 Optimizing for maximum impact...'
+    ]
+    return messages[Math.floor(Math.random() * messages.length)]
+  }
+
   const handleBeautifySelected = async () => {
     if (!profile || selectedVideos.length === 0) {
       addMessage('system', 'Please select videos to enhance')
@@ -91,7 +133,7 @@ export default function Profile() {
     setIsProcessing(true)
     setIsChatOpen(true)
     addMessage('user', `Batch enhance ${selectedVideos.length} covers`)
-    addMessage('bot', `Enhancing ${selectedVideos.length} covers for you, please wait... 🎨`)
+    addMessage('bot', `🎬 Starting batch enhancement for ${selectedVideos.length} covers! ${getRandomEnhancingMessage()}`)
 
     let successCount = 0
     let failCount = 0
@@ -105,14 +147,14 @@ export default function Profile() {
       const video = profile.videos[videoIndex]
       
       try {
-        addMessage('bot', `[${i + 1}/${selectedVideos.length}] Enhancing: ${video.title || 'Video'}`)
+        addMessage('bot', `[${i + 1}/${selectedVideos.length}] ${getRandomEnhancingMessage()}`)
 
         const originalCover = video.cover
         const coverImage = originalCover.includes('/api/proxy-image?url=')
           ? decodeURIComponent(originalCover.split('url=')[1]?.split('&')[0] || originalCover)
           : originalCover
         
-        const prompt = 'Dramatically enhance the color saturation and contrast of this image, increase vibrancy and lighting effects to make the scene more vivid and impactful. Enhance detail clarity and sharpness. Add eye-catching and attractive English text titles or slogans on the image. The text should be large and clear, with prominent colors, positioned appropriately to attract audience attention. The text content should be short, powerful, and engaging.'
+        const prompt = promptTemplates[selectedPromptTemplate as keyof typeof promptTemplates]?.prompt || promptTemplates.default.prompt
         
         const editResponse = await imageApi.editImage(coverImage, prompt)
         const taskId = editResponse.data.taskId
@@ -145,7 +187,7 @@ export default function Profile() {
               
               successCount++
               beautified = true
-              addMessage('bot', `✅ [${i + 1}/${selectedVideos.length}] Enhanced successfully`)
+              addMessage('bot', `✨ [${i + 1}/${selectedVideos.length}] Boom! Looking absolutely stunning!`)
             } else if (status === 'TASK_STATUS_FAILED') {
               failCount++
               beautified = true
@@ -168,7 +210,7 @@ export default function Profile() {
       }
     }
 
-    addMessage('bot', `🎉 Batch enhancement complete! Success: ${successCount}, Failed: ${failCount}`)
+    addMessage('bot', `🎊 Mission accomplished! ${successCount} masterpieces created! ${failCount > 0 ? `(${failCount} didn't make the cut)` : 'Perfect score! 💯'}`)
     setIsProcessing(false)
     setIsSelectionMode(false)
     setSelectedVideos([])
@@ -183,7 +225,7 @@ export default function Profile() {
     setIsProcessing(true)
     setIsChatOpen(true)
     addMessage('user', 'Enhance cover')
-    addMessage('bot', 'Enhancing your cover, please wait... 🎨')
+    addMessage('bot', `${getRandomEnhancingMessage()} Hang tight! ⏳`)
 
     try {
       const originalCover = profile.videos[0].cover
@@ -200,7 +242,7 @@ export default function Profile() {
       
       console.log('📤 Submit enhancement task:', coverImage)
       
-      const prompt = 'Dramatically enhance the color saturation and contrast of this image, increase vibrancy and lighting effects to make the scene more vivid and impactful. Enhance detail clarity and sharpness. Add eye-catching and attractive English text titles or slogans on the image. The text should be large and clear, with prominent colors, positioned appropriately to attract audience attention. The text content should be short, powerful, and engaging.'
+      const prompt = promptTemplates[selectedPromptTemplate as keyof typeof promptTemplates]?.prompt || promptTemplates.default.prompt
       
       // Submit image editing task
       const editResponse = await imageApi.editImage(coverImage, prompt)
@@ -262,7 +304,7 @@ export default function Profile() {
             })
             
             // Add completion message
-            const comparisonMessage = `✨ Cover enhancement complete!`
+            const comparisonMessage = `🎉 Ta-da! Your cover is looking absolutely fire! 🔥`
             
             addMessage('bot', comparisonMessage, proxyUrl)
             setIsProcessing(false)
@@ -308,34 +350,65 @@ export default function Profile() {
     }
   }
 
+  const handleUploadClick = () => {
+    setShowUploadDialog(true)
+  }
+
+  const handleUploadVideo = () => {
+    console.log('Upload video functionality')
+    // TODO: Implement video upload
+    addMessage('system', '🎬 Video upload feature coming soon! Stay tuned for the ability to upload and enhance your own videos.')
+    setShowUploadDialog(false)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 relative">
       {/* 顶部 Header 区域 */}
       {profile && !loading && !error && (
-        <div className="fixed top-0 left-0 right-0 h-16 bg-white z-40">
-          <div className="max-w-7xl mx-auto h-full px-4 flex items-center justify-between">
-            {/* Left: Select button */}
-            <button
-              onClick={() => {
-                setIsSelectionMode(!isSelectionMode)
-                setSelectedVideos([])
-              }}
-              className="px-5 py-2 bg-white text-primary border-2 border-primary rounded-full font-medium hover:bg-primary hover:text-white transition"
-            >
-              {isSelectionMode ? 'Cancel' : 'Select'}
-            </button>
-
-            {/* Right: Batch enhance button (only show in selection mode) */}
-            {isSelectionMode && selectedVideos.length > 0 && (
+        <div className="fixed top-0 left-0 right-0 h-auto bg-white z-40 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between gap-4">
+              {/* Left: Select button */}
               <button
-                onClick={handleBeautifySelected}
-                disabled={isProcessing}
-                className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full font-medium hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  setIsSelectionMode(!isSelectionMode)
+                  setSelectedVideos([])
+                }}
+                className="px-5 py-2 bg-white text-primary border-2 border-primary rounded-full font-medium hover:bg-primary hover:text-white transition"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>Enhance {selectedVideos.length} covers</span>
+                {isSelectionMode ? 'Cancel' : 'Select'}
               </button>
-            )}
+
+              {/* Middle: Template selector (show when selection mode or enhancing) */}
+              {(isSelectionMode || isProcessing) && (
+                <div className="flex-1 max-w-xs">
+                  <select
+                    value={selectedPromptTemplate}
+                    onChange={(e) => setSelectedPromptTemplate(e.target.value)}
+                    disabled={isProcessing}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {Object.entries(promptTemplates).map(([key, template]) => (
+                      <option key={key} value={key}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Right: Batch enhance button (only show in selection mode) */}
+              {isSelectionMode && selectedVideos.length > 0 && (
+                <button
+                  onClick={handleBeautifySelected}
+                  disabled={isProcessing}
+                  className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full font-medium hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Enhance {selectedVideos.length}</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -366,6 +439,7 @@ export default function Profile() {
             isSelectionMode={isSelectionMode}
             selectedVideos={selectedVideos}
             onToggleSelection={toggleVideoSelection}
+            onUploadClick={handleUploadClick}
           />
         ) : (
           <div className="h-screen flex items-center justify-center text-gray-500">
@@ -374,19 +448,19 @@ export default function Profile() {
         )}
       </div>
 
-      {/* 右下角浮窗按钮 */}
+      {/* 右下角浮窗按钮 - 移到中间右边 */}
       {!isChatOpen && (
         <button
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-20 right-6 w-16 h-16 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-110 flex items-center justify-center z-50"
+          className="fixed top-1/2 right-6 transform -translate-y-1/2 w-16 h-16 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-110 flex items-center justify-center z-50 animate-pulse"
         >
           <MessageCircle className="w-8 h-8" />
         </button>
       )}
 
-      {/* 聊天浮窗 */}
+      {/* 聊天浮窗 - 位置移到中间右边 */}
       {isChatOpen && (
-        <div className="fixed bottom-20 right-6 w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-3rem)] bg-white rounded-2xl shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed top-1/2 right-6 transform -translate-y-1/2 w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-6rem)] bg-white rounded-2xl shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-300">
           {/* Floating window title bar */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-primary to-pink-500 text-white rounded-t-2xl">
             <div className="flex items-center gap-2">
@@ -426,6 +500,55 @@ export default function Profile() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Upload Video Dialog */}
+      {showUploadDialog && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowUploadDialog(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Upload Video</h2>
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-4 hover:border-primary transition">
+              <Upload className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+              <p className="text-gray-600 mb-2">Drag and drop your video here</p>
+              <p className="text-sm text-gray-400">or click to browse</p>
+              <input
+                type="file"
+                accept="video/*"
+                className="hidden"
+                id="video-upload"
+              />
+              <label
+                htmlFor="video-upload"
+                className="inline-block mt-4 px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full cursor-pointer transition"
+              >
+                Choose Video
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Upload your video to our platform, then beautify the cover to make it stand out!
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUploadDialog(false)}
+                className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUploadVideo}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-primary to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transition"
+              >
+                Upload
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

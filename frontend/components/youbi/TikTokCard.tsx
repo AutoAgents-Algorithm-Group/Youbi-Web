@@ -1,6 +1,6 @@
 'use client'
 
-import { Heart, Eye, Sparkles, Check } from 'lucide-react'
+import { Heart, Eye, Sparkles, Check, Plus, Upload } from 'lucide-react'
 import type { TikTokProfile } from '@/lib/types/youbi'
 
 interface TikTokCardProps {
@@ -8,13 +8,15 @@ interface TikTokCardProps {
   isSelectionMode?: boolean
   selectedVideos?: string[]
   onToggleSelection?: (videoId: string) => void
+  onUploadClick?: () => void
 }
 
 export default function TikTokCard({ 
   profile,
   isSelectionMode = false,
   selectedVideos = [],
-  onToggleSelection
+  onToggleSelection,
+  onUploadClick
 }: TikTokCardProps) {
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
@@ -65,10 +67,25 @@ export default function TikTokCard({
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
           <Eye className="w-5 h-5" />
-          Videos ({profile.videos.length})
+          Videos ({profile.videos.length + 1})
         </h3>
         {/* Responsive grid: 3 columns on mobile, 6 columns on desktop */}
         <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+          {/* Upload Button as First Item */}
+          <button
+            onClick={onUploadClick}
+            className="relative aspect-[9/16] rounded-lg border-2 border-dashed border-gray-300 hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 group"
+          >
+            <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
+              <Plus className="w-6 h-6 text-gray-400 group-hover:text-primary transition-colors" />
+            </div>
+            <div className="text-center px-2">
+              <p className="text-xs font-medium text-gray-600 group-hover:text-primary transition-colors">Upload</p>
+              <p className="text-xs text-gray-400">Video</p>
+            </div>
+          </button>
+          
+          {/* Existing Videos */}
           {profile.videos.map((video, index) => {
             const isSelected = selectedVideos.includes(video.id)
             

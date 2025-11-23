@@ -13,15 +13,24 @@ export async function GET(
   try {
     const { username } = await params;
     
-    // 先从缓存查找
-    const cached = profileCache[username];
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log(`📦 从缓存返回 ${username} 的数据`);
-      return NextResponse.json({ 
-        success: true, 
-        profile: cached.data, 
-        fromCache: true 
-      });
+    // 检查是否强制刷新
+    const url = new URL(request.url);
+    const forceRefresh = url.searchParams.get('refresh') === 'true';
+    
+    // 先从缓存查找（除非强制刷新）
+    if (!forceRefresh) {
+      const cached = profileCache[username];
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        console.log(`📦 从缓存返回 ${username} 的数据`);
+        return NextResponse.json({ 
+          success: true, 
+          profile: cached.data, 
+          fromCache: true 
+        });
+      }
+    } else {
+      console.log(`🔄 强制刷新 ${username} 的数据`);
+      delete profileCache[username];
     }
     
     console.log(`🔍 获取 TikTok 用户真实数据: ${username}`);
@@ -55,17 +64,18 @@ export async function GET(
       
       return NextResponse.json(
         { 
-          error: '获取用户数据失败',
-          message: `RapidAPI 无法获取 @${username} 的数据: ${errorMsg}`,
+          error: 'Failed to fetch user data',
+          message: `Unable to get @${username} data from RapidAPI: ${errorMsg}`,
           username
         },
         { status: 404 }
       );
     }
-    // 如果有用户信息但没有视频，记录警告但继续
+    // 如果有用户信息但没有视频，记录警告
     if (!videos || videos.length === 0) {
-      console.log(`⚠️  用户 ${username} 没有视频数据，但有用户信息`);
-      videos = []; // 确保是空数组而不是 null
+      console.log(`⚠️  用户 ${username} 没有视频数据`);
+      console.log(`⚠️  RapidAPI 视频端点可能有限制或该用户无公开视频`);
+      videos = []; // 返回空数组
     }
     
     // 格式化 Profile

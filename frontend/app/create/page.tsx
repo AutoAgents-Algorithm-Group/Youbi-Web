@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { User, Image, Video, Wand2, Sparkles, TrendingUp, LucideIcon } from 'lucide-react'
+import { User, Image, Video, Wand2, Sparkles, TrendingUp, LucideIcon, BarChart3, Search } from 'lucide-react'
 import { useState } from 'react'
 
 interface Feature {
@@ -66,10 +66,17 @@ export default function CreatePage() {
     },
     {
       id: 'analytics',
-      title: 'Analytics',
-      icon: TrendingUp,
+      title: 'Data Analytics',
+      icon: BarChart3,
       color: 'from-yellow-500 to-orange-500',
-      onClick: () => console.log('Analytics coming soon')
+      onClick: () => console.log('Analytics')
+    },
+    {
+      id: 'account-diagnosis',
+      title: 'Account Diagnosis',
+      icon: Search,
+      color: 'from-blue-500 to-cyan-500',
+      onClick: () => console.log('Account diagnosis')
     }
   ]
 

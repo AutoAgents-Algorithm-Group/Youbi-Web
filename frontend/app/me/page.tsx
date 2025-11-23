@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { 
   User, 
   Wallet, 
@@ -11,7 +12,8 @@ import {
   LogOut,
   ChevronRight,
   Zap,
-  Coins
+  Coins,
+  Menu
 } from 'lucide-react'
 
 export default function MePage() {
@@ -21,8 +23,10 @@ export default function MePage() {
     username: '@user123',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=User',
     energy: 850,
-    coins: 12500
+    points: 12500
   })
+
+  const [showMenu, setShowMenu] = useState(false)
 
   const menuSections = [
     {
@@ -37,8 +41,8 @@ export default function MePage() {
         },
         {
           icon: Coins,
-          label: 'Coins',
-          value: user.coins.toLocaleString(),
+          label: 'Points',
+          value: user.points.toLocaleString(),
           color: 'text-orange-500',
           bgColor: 'bg-orange-50'
         }
@@ -69,8 +73,35 @@ export default function MePage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-2xl mx-auto">
-        {/* Header with gradient background */}
-        <div className="bg-gradient-to-br from-primary to-pink-500 px-6 pt-12 pb-20">
+        {/* Header with gradient background and settings icon */}
+        <div className="bg-gradient-to-br from-primary to-pink-500 px-6 pt-12 pb-20 relative">
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="absolute top-6 right-6 p-2 rounded-full bg-white/20 hover:bg-white/30 transition"
+          >
+            <Menu className="w-6 h-6 text-white" />
+          </button>
+          
+          {/* Settings dropdown menu */}
+          {showMenu && (
+            <div className="absolute top-16 right-6 bg-white rounded-xl shadow-lg overflow-hidden z-10 min-w-[200px]">
+              <button
+                onClick={() => console.log('Settings')}
+                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition text-left"
+              >
+                <Settings className="w-5 h-5 text-gray-600" />
+                <span className="text-gray-900">Settings</span>
+              </button>
+              <button
+                onClick={() => console.log('Help')}
+                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition text-left border-t border-gray-100"
+              >
+                <HelpCircle className="w-5 h-5 text-gray-600" />
+                <span className="text-gray-900">Help Center</span>
+              </button>
+            </div>
+          )}
+          
           <h1 className="text-2xl font-bold text-white mb-1">My Profile</h1>
           <p className="text-white/80">Manage your account and settings</p>
         </div>
@@ -110,8 +141,8 @@ export default function MePage() {
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-50 mb-3">
                   <Coins className="w-6 h-6 text-orange-500" />
                 </div>
-                <p className="text-2xl font-bold text-gray-900 mb-1">{user.coins.toLocaleString()}</p>
-                <p className="text-sm text-gray-500">Coins</p>
+                <p className="text-2xl font-bold text-gray-900 mb-1">{user.points.toLocaleString()}</p>
+                <p className="text-sm text-gray-500">Points</p>
               </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">

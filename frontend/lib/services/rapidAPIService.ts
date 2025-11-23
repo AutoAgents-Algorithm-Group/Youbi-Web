@@ -66,7 +66,9 @@ class RapidAPIService {
 
         // 检查响应数据结构
         if (!response.data || !response.data.data) {
-          throw new Error('API返回数据为空');
+          console.log(`⚠️  API返回空数据，停止分页`);
+          hasMore = false;
+          break;
         }
 
         const data = response.data.data;
@@ -79,7 +81,9 @@ class RapidAPIService {
         });
         
         if (data.statusCode !== 0 && data.status_code !== 0) {
-          throw new Error(`API返回错误: ${data.statusCode || data.status_code}`);
+          console.log(`⚠️  API返回错误状态码: ${data.statusCode || data.status_code}，停止分页`);
+          hasMore = false;
+          break;
         }
 
         const itemList = data.itemList || [];
@@ -139,8 +143,16 @@ class RapidAPIService {
         }
       }
 
+      // 如果没有找到视频，但可能有用户信息
       if (allVideos.length === 0) {
-        throw new Error('没有找到视频');
+        console.log(`⚠️  没有找到视频数据`);
+        // 如果有用户信息，返回空视频列表
+        if (userInfo) {
+          console.log(`✅ 返回用户信息但视频列表为空`);
+          return { userInfo, videos: [] };
+        }
+        // 如果连用户信息都没有，抛出错误
+        throw new Error('没有找到视频和用户信息');
       }
 
       if (!userInfo) {
@@ -325,14 +337,17 @@ class RapidAPIService {
     // 第一步：获取用户信息和 secUid
     const { secUid, userInfo } = await this.getUserInfo(username);
     
+    console.log(`✅ 获取到用户信息: ${userInfo.nickname}, secUid: ${secUid ? secUid.substring(0, 20) + '...' : 'EMPTY'}`);
+    
     if (!secUid) {
       // 如果没有 secUid，返回用户信息但没有视频
-      console.log(`⚠️  未获取到 secUid，只返回用户信息`);
+      console.log(`⚠️  未获取到 secUid，无法获取视频列表`);
       return { userInfo, videos: [] };
     }
     
     // 第二步：获取视频列表（获取最多200个视频）
     try {
+      console.log(`📡 开始获取视频列表，secUid: ${secUid.substring(0, 20)}...`);
       const result = await this.getUserVideos(secUid, 200);
       console.log(`✅ RapidAPI 成功获取 ${result.videos.length} 个视频`);
       // 合并用户信息（getUserVideos 返回的可能更完整）
@@ -341,8 +356,11 @@ class RapidAPIService {
         videos: result.videos
       };
     } catch (error: any) {
-      console.log(`⚠️  获取视频失败: ${error.message}，仅返回用户信息`);
+      const errorMsg = error.message || 'Unknown error';
+      console.error(`❌ 获取视频失败: ${errorMsg}`);
+      console.error(`❌ 错误详情:`, error.response?.data || error);
       // 即使视频获取失败，也返回用户信息
+      console.log(`⚠️  返回用户信息但视频列表为空`);
       return { userInfo, videos: [] };
     }
   }

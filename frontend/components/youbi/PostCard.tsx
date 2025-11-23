@@ -1,21 +1,39 @@
 'use client'
 
 import { useState } from 'react'
-import { Heart, MessageCircle, Send } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Heart, MessageCircle, Send, Share2 } from 'lucide-react'
 import type { Post, Comment } from '@/lib/types/youbi'
 
 interface PostCardProps {
   post: Post
   onLike: (postId: string) => void
   onComment: (postId: string, content: string, parentCommentId?: string) => void
+  onShare?: (postId: string) => void
 }
 
-export default function PostCard({ post, onLike, onComment }: PostCardProps) {
+export default function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
+  const router = useRouter()
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [replyTo, setReplyTo] = useState<{ commentId: string; username: string } | null>(null)
+  const [showShareMenu, setShowShareMenu] = useState(false)
   const currentUserId = 'current_user' // 实际应用中从认证状态获取
   const isLiked = post.likes.includes(currentUserId)
+
+  const handleProfileClick = () => {
+    // Navigate to user profile
+    router.push(`/profile/${post.username.replace('@', '')}`)
+  }
+
+  const handleShare = (method: string) => {
+    console.log(`Share via ${method}:`, post._id)
+    if (onShare) {
+      onShare(post._id)
+    }
+    setShowShareMenu(false)
+    // TODO: Implement actual sharing logic
+  }
 
   const handleSubmitComment = (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,7 +64,7 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
           </div>
           <div className="flex items-center gap-3 mt-1 px-3">
             <span className="text-xs text-gray-400">
-              {new Date(comment.createdAt).toLocaleDateString('zh-CN')}
+              {new Date(comment.createdAt).toLocaleDateString('en-US')}
             </span>
             {!isReply && (
               <button
@@ -72,17 +90,22 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
     <div className="bg-white rounded-xl shadow-md overflow-hidden mb-4 hover:shadow-xl transition">
       {/* 用户信息 */}
       <div className="p-3 flex items-center gap-3">
-        <img
-          src={post.avatar}
-          alt={post.username}
-          className="w-10 h-10 rounded-full"
-        />
-        <div className="flex-1">
-          <p className="font-semibold text-sm">{post.username}</p>
-          <p className="text-xs text-gray-500">
-            {new Date(post.createdAt).toLocaleDateString('zh-CN')}
-          </p>
-        </div>
+        <button
+          onClick={handleProfileClick}
+          className="flex items-center gap-3 hover:opacity-80 transition"
+        >
+          <img
+            src={post.avatar}
+            alt={post.username}
+            className="w-10 h-10 rounded-full cursor-pointer"
+          />
+          <div className="flex-1 text-left">
+            <p className="font-semibold text-sm hover:text-primary transition">{post.username}</p>
+            <p className="text-xs text-gray-500">
+              {new Date(post.createdAt).toLocaleDateString('en-US')}
+            </p>
+          </div>
+        </button>
       </div>
 
       {/* Comparison Images */}
@@ -135,6 +158,40 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
           <MessageCircle className="w-5 h-5" />
           <span className="text-sm font-medium">{post.comments.length}</span>
         </button>
+
+        <div className="relative ml-auto">
+          <button
+            onClick={() => setShowShareMenu(!showShareMenu)}
+            className="flex items-center gap-2 text-gray-600 hover:text-primary transition"
+          >
+            <Share2 className="w-5 h-5" />
+            <span className="text-sm font-medium">Share</span>
+          </button>
+          
+          {/* Share menu */}
+          {showShareMenu && (
+            <div className="absolute right-0 bottom-full mb-2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 min-w-[150px] z-10">
+              <button
+                onClick={() => handleShare('twitter')}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition"
+              >
+                Share to Twitter
+              </button>
+              <button
+                onClick={() => handleShare('facebook')}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition"
+              >
+                Share to Facebook
+              </button>
+              <button
+                onClick={() => handleShare('copy')}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition"
+              >
+                Copy Link
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 评论区域 */}

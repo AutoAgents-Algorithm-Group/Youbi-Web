@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Compass, User } from 'lucide-react'
+import { Home, Compass, MessageCircle, User } from 'lucide-react'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -21,10 +21,10 @@ export default function BottomNav() {
       active: pathname === '/explorer'
     },
     {
-      name: 'Me',
-      href: '/me',
-      icon: User,
-      active: pathname === '/me'
+      name: 'Chat',
+      href: '/chat',
+      icon: MessageCircle,
+      active: pathname === '/chat'
     }
   ]
 
