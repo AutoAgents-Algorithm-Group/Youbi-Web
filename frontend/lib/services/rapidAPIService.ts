@@ -29,6 +29,63 @@ class RapidAPIService {
   }
 
   /**
+   * 获取用户详细信息
+   * 端点: GET /user/info
+   * 参数: unique_id
+   */
+  async getUserInfo(username: string): Promise<TikTokUserInfo> {
+    try {
+      console.log(`📡 RapidAPI: 获取用户信息 - username: ${username}`);
+      
+      const response = await axios.get(
+        `https://${this.apiHost}/user/info`,
+        {
+          params: {
+            unique_id: username
+          },
+          headers: {
+            'x-rapidapi-key': this.getApiKey(),
+            'x-rapidapi-host': this.apiHost
+          },
+          timeout: 15000
+        }
+      );
+
+      // 检查响应
+      if (!response.data || response.data.code !== 0) {
+        console.log(`⚠️  user/info API返回错误: ${response.data?.msg || '未知错误'}`);
+        throw new Error(response.data?.msg || '无法获取用户信息');
+      }
+
+      const data = response.data.data;
+      const user = data.user;
+      const stats = data.stats;
+
+      if (!user) {
+        throw new Error('用户数据为空');
+      }
+
+      const userInfo: TikTokUserInfo = {
+        username: user.uniqueId || username,
+        nickname: user.nickname || username,
+        avatar: user.avatarLarger || user.avatarMedium || user.avatarThumb || '',
+        bio: user.signature || '',
+        followers: parseInt(stats?.followerCount) || 0,
+        following: parseInt(stats?.followingCount) || 0,
+        likes: parseInt(stats?.heartCount || stats?.heart) || 0,
+        verified: user.verified || false,
+      };
+
+      console.log(`✅ 用户信息获取成功: ${userInfo.nickname} (${userInfo.followers.toLocaleString()} 粉丝)`);
+      
+      return userInfo;
+    } catch (error: any) {
+      console.error('❌ 获取用户信息失败:', error.response?.data?.message || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 获取用户视频列表（支持分页，获取所有视频）
    * 端点: GET /user/posts
    * 参数: unique_id, count, cursor
@@ -182,7 +239,7 @@ class RapidAPIService {
 
   /**
    * 通过username获取Profile
-   * 直接使用 unique_id 获取视频列表
+   * 同时获取用户详细信息和视频列表
    */
   async getProfile(username: string): Promise<{
     userInfo: TikTokUserInfo;
@@ -191,16 +248,60 @@ class RapidAPIService {
     console.log(`🔍 使用 RapidAPI 获取 ${username} 的完整数据`);
     
     try {
-      // 直接使用 username 获取视频列表
-      const result = await this.getUserVideos(username, 200);
-      console.log(`✅ RapidAPI 成功获取 ${result.videos.length} 个视频`);
-      return result;
+      // 第一步：获取用户详细信息
+      let userInfo: TikTokUserInfo;
+      try {
+        userInfo = await this.getUserInfo(username);
+        console.log(`✅ 用户信息: ${userInfo.nickname}, ${userInfo.followers.toLocaleString()} 粉丝`);
+      } catch (infoError) {
+        console.log(`⚠️  user/info 失败，将从视频列表中提取基本信息`);
+        // 如果获取用户信息失败，继续获取视频，从视频中提取用户信息
+        userInfo = {
+          username: username,
+          nickname: username,
+          avatar: '',
+          bio: '',
+          followers: 0,
+          following: 0,
+          likes: 0,
+          verified: false,
+        };
+      }
+
+      // 第二步：获取视频列表
+      try {
+        const videoResult = await this.getUserVideos(username, 200);
+        console.log(`✅ 视频列表: ${videoResult.videos.length} 个视频`);
+        
+        // 如果之前用户信息获取失败，使用视频中的基本信息
+        if (!userInfo.avatar || !userInfo.nickname || userInfo.nickname === username) {
+          console.log(`🔄 使用视频中的用户信息补充`);
+          userInfo = {
+            ...userInfo,
+            username: videoResult.userInfo.username || userInfo.username,
+            nickname: videoResult.userInfo.nickname || userInfo.nickname,
+            avatar: videoResult.userInfo.avatar || userInfo.avatar,
+          };
+        }
+        
+        return {
+          userInfo,
+          videos: videoResult.videos
+        };
+      } catch (videoError: any) {
+        console.error(`❌ 获取视频失败: ${videoError.message}`);
+        // 即使视频获取失败，也返回用户信息
+        return {
+          userInfo,
+          videos: []
+        };
+      }
     } catch (error: any) {
       const errorMsg = error.message || 'Unknown error';
-      console.error(`❌ 获取视频失败: ${errorMsg}`);
+      console.error(`❌ 获取完整数据失败: ${errorMsg}`);
       console.error(`❌ 错误详情:`, error.response?.data || error);
       
-      // 即使视频获取失败，也尝试返回基本用户信息
+      // 最终降级方案：返回基本占位信息
       return {
         userInfo: {
           username: username,
