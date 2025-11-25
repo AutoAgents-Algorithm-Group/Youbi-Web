@@ -33,6 +33,7 @@ export default function Profile() {
   const [selectedVideos, setSelectedVideos] = useState<string[]>([])
   const [selectedPromptTemplate, setSelectedPromptTemplate] = useState('default')
   const [showUploadDialog, setShowUploadDialog] = useState(false)
+  const [originalCovers, setOriginalCovers] = useState<{ [videoId: string]: string }>({})
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   // Beautify prompt templates - Focus on people and filters only, no text overlay
@@ -198,6 +199,14 @@ export default function Profile() {
               setProfile(prev => {
                 if (!prev) return prev
                 const updatedVideos = [...prev.videos]
+                // Save original cover before updating
+                const originalCover = updatedVideos[videoIndex].cover
+                if (!originalCovers[video.id]) {
+                  setOriginalCovers(prevCovers => ({
+                    ...prevCovers,
+                    [video.id]: originalCover
+                  }))
+                }
                 updatedVideos[videoIndex] = {
                   ...updatedVideos[videoIndex],
                   cover: proxyUrl
@@ -312,6 +321,14 @@ export default function Profile() {
             
             setProfile(prev => {
               if (!prev) return prev
+              const oldCover = prev.videos[0].cover
+              // Save original cover before updating
+              if (!originalCovers[prev.videos[0].id]) {
+                setOriginalCovers(prevCovers => ({
+                  ...prevCovers,
+                  [prev.videos[0].id]: oldCover
+                }))
+              }
               const updatedVideos = [...prev.videos]
               updatedVideos[0] = {
                 ...updatedVideos[0],
@@ -502,6 +519,7 @@ export default function Profile() {
             selectedVideos={selectedVideos}
             onToggleSelection={toggleVideoSelection}
             onUploadClick={handleUploadClick}
+            originalCovers={originalCovers}
           />
         ) : (
           <div className="h-screen flex items-center justify-center text-gray-500">

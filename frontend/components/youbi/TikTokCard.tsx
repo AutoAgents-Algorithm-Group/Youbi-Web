@@ -1,6 +1,7 @@
 'use client'
 
-import { Heart, Eye, Sparkles, Check, Plus, Upload } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Heart, Eye, Sparkles, Check, Plus, Undo2, X, Download } from 'lucide-react'
 import type { TikTokProfile } from '@/lib/types/youbi'
 
 interface TikTokCardProps {
@@ -9,6 +10,7 @@ interface TikTokCardProps {
   selectedVideos?: string[]
   onToggleSelection?: (videoId: string) => void
   onUploadClick?: () => void
+  originalCovers?: { [videoId: string]: string } // Store original covers for comparison
 }
 
 export default function TikTokCard({ 
@@ -16,8 +18,24 @@ export default function TikTokCard({
   isSelectionMode = false,
   selectedVideos = [],
   onToggleSelection,
-  onUploadClick
+  onUploadClick,
+  originalCovers = {}
 }: TikTokCardProps) {
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
+  const [showingOriginal, setShowingOriginal] = useState<{ [key: string]: boolean }>({})
+  const [downloadingVideo, setDownloadingVideo] = useState<string | null>(null)
+
+  // Handle Esc key to close fullscreen
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && fullscreenImage) {
+        setFullscreenImage(null)
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [fullscreenImage])
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M'
@@ -25,6 +43,54 @@ export default function TikTokCard({
       return (num / 1000).toFixed(1) + 'K'
     }
     return num.toString()
+  }
+
+  const handleImageClick = (cover: string, videoId: string, isEnhanced: boolean, e: React.MouseEvent) => {
+    e.stopPropagation()
+    // Open fullscreen when not in selection mode
+    if (!isSelectionMode) {
+      console.log('Opening fullscreen for:', cover, 'isEnhanced:', isEnhanced)
+      setFullscreenImage(cover)
+    }
+  }
+
+  const handleDownload = async (imageUrl: string, videoId?: string) => {
+    try {
+      if (videoId) setDownloadingVideo(videoId)
+      
+      const response = await fetch(imageUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `youbi-enhanced-${Date.now()}.jpg`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      // Show success state briefly
+      if (videoId) {
+        setTimeout(() => setDownloadingVideo(null), 1500)
+      }
+    } catch (error) {
+      console.error('Download failed:', error)
+      if (videoId) setDownloadingVideo(null)
+      // Fallback: open in new tab
+      window.open(imageUrl, '_blank')
+    }
+  }
+
+  const toggleOriginal = (videoId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowingOriginal(prev => ({
+      ...prev,
+      [videoId]: !prev[videoId]
+    }))
+  }
+
+  const isEnhanced = (cover: string) => {
+    return cover.includes('faas-output-image') || cover.includes('jiekou.ai') || cover.includes('proxy-image')
   }
 
   return (
@@ -88,26 +154,43 @@ export default function TikTokCard({
           {/* Existing Videos */}
           {profile.videos.map((video, index) => {
             const isSelected = selectedVideos.includes(video.id)
+            const hasOriginal = originalCovers[video.id]
+            const showOriginal = showingOriginal[video.id]
+            const displayCover = (showOriginal && hasOriginal) ? originalCovers[video.id] : video.cover
+            const enhanced = isEnhanced(video.cover)
             
             return (
               <div 
                 key={`${video.id}-${index}`} 
-                className="relative aspect-[9/16] group cursor-pointer overflow-hidden rounded-lg"
-                onClick={() => isSelectionMode && onToggleSelection?.(video.id)}
+                className={`relative aspect-[9/16] group overflow-hidden rounded-lg ${
+                  isSelectionMode ? 'cursor-pointer' : ''
+                }`}
+                onClick={(e) => {
+                  if (isSelectionMode) {
+                    e.stopPropagation()
+                    onToggleSelection?.(video.id)
+                  }
+                }}
               >
                 <img
-                  key={video.cover}
-                  src={video.cover}
+                  key={displayCover}
+                  src={displayCover}
                   alt={video.title}
                   className={`w-full h-full object-cover transition-all duration-500 ${
                     isSelectionMode && isSelected ? 'scale-95 brightness-75' : 'group-hover:scale-110'
-                  }`}
+                  } ${!isSelectionMode && enhanced ? 'cursor-zoom-in' : 'cursor-pointer'}`}
                   loading="lazy"
+                  onClick={(e) => {
+                    if (!isSelectionMode) {
+                      e.stopPropagation()
+                      setFullscreenImage(displayCover)
+                    }
+                  }}
                 />
                 
-                {/* 选择模式下的复选框 */}
+                {/* Selection Mode Checkbox */}
                 {isSelectionMode && (
-                  <div className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                  <div className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all pointer-events-none ${
                     isSelected 
                       ? 'bg-primary border-primary' 
                       : 'bg-white/30 border-white backdrop-blur-sm'
@@ -116,18 +199,58 @@ export default function TikTokCard({
                   </div>
                 )}
                 
+                {/* Back to Original Button - Show when enhanced and has original */}
+                {!isSelectionMode && enhanced && hasOriginal && (
+                  <button
+                    onClick={(e) => toggleOriginal(video.id, e)}
+                    className="absolute top-2 right-2 w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-110 z-10"
+                    title={showOriginal ? "Show enhanced" : "Show original"}
+                  >
+                    <Undo2 className={`w-4 h-4 transition-colors ${showOriginal ? 'text-primary' : 'text-gray-600'}`} />
+                  </button>
+                )}
+                
+                {/* Download Button - Show when enhanced and not showing original */}
+                {!isSelectionMode && enhanced && !showOriginal && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDownload(displayCover, video.id)
+                    }}
+                    className={`absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-110 z-10 group/download ${
+                      downloadingVideo === video.id 
+                        ? 'bg-green-500 scale-110' 
+                        : 'bg-white/90 hover:bg-white'
+                    }`}
+                    title="Download enhanced image"
+                  >
+                    {downloadingVideo === video.id ? (
+                      <Check className="w-4 h-4 text-white" />
+                    ) : (
+                      <Download className="w-4 h-4 text-gray-600 group-hover/download:text-primary transition-colors" />
+                    )}
+                  </button>
+                )}
+                
                 {/* AI Enhanced Badge */}
-                {!isSelectionMode && (video.cover.includes('faas-output-image') || video.cover.includes('jiekou.ai')) && (
-                  <div className="absolute top-2 left-2 bg-gradient-to-r from-primary to-pink-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-lg animate-pulse">
+                {!isSelectionMode && enhanced && !showOriginal && (
+                  <div className="absolute top-2 left-2 bg-gradient-to-r from-primary to-pink-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
                     <Sparkles className="w-3 h-3" />
-                    <span>AI Enhanced</span>
+                    <span>Enhanced</span>
+                  </div>
+                )}
+
+                {/* Original Badge */}
+                {!isSelectionMode && showOriginal && (
+                  <div className="absolute top-2 left-2 bg-gray-600 text-white text-xs px-2 py-1 rounded-full shadow-lg">
+                    <span>Original</span>
                   </div>
                 )}
                 
-                {/* hover 信息 */}
+                {/* Hover Info */}
                 {!isSelectionMode && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition">
-                    <div className="absolute bottom-2 left-2 right-2">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                    <div className="absolute bottom-2 left-2 right-12">
                       <div className="flex items-center gap-2 text-white text-xs">
                         <Eye className="w-3 h-3" />
                         <span>{formatNumber(video.playCount)}</span>
@@ -142,6 +265,58 @@ export default function TikTokCard({
           })}
         </div>
       </div>
+
+      {/* Fullscreen Image Viewer */}
+      {fullscreenImage && (
+        <div 
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setFullscreenImage(null)}
+        >
+          {/* Close Button */}
+          <button
+            onClick={() => setFullscreenImage(null)}
+            className="absolute top-4 right-4 md:top-6 md:right-6 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all transform hover:scale-110 z-10 backdrop-blur-sm border border-white/20"
+            title="Close (Esc)"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+
+          {/* Download Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handleDownload(fullscreenImage)
+            }}
+            className="absolute top-4 right-20 md:top-6 md:right-24 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all transform hover:scale-110 z-10 backdrop-blur-sm border border-white/20"
+            title="Download Image"
+          >
+            <Download className="w-6 h-6 text-white" />
+          </button>
+
+          {/* Enhanced Badge - Only show if image is enhanced */}
+          {isEnhanced(fullscreenImage) && (
+            <div className="absolute top-4 left-4 md:top-6 md:left-6 bg-gradient-to-r from-primary to-pink-500 text-white text-sm px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg z-10">
+              <Sparkles className="w-4 h-4" />
+              <span className="font-medium">AI Enhanced</span>
+            </div>
+          )}
+
+          {/* Image */}
+          <img
+            src={fullscreenImage}
+            alt="Fullscreen view"
+            className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-300 shadow-2xl rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Image Info */}
+          <div className="absolute bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm border border-white/20">
+            <span className="hidden md:inline">Click anywhere to close • </span>
+            <span className="md:hidden">Tap to close • </span>
+            Press Esc
+          </div>
+        </div>
+      )}
     </div>
   )
 }
