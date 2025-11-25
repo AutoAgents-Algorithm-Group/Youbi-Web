@@ -19,40 +19,43 @@ export default function Profile() {
     {
       id: '1',
       type: 'system',
-      content: 'Hello! I\'m your AI assistant. I can help you enhance covers or chat with you ✨',
+      content: 'Hello! I\'m Andrew, your AI butler. I can help you enhance covers or chat with you.',
       timestamp: new Date()
     }
   ])
   const [inputMessage, setInputMessage] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [processingProgress, setProcessingProgress] = useState('')
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([])
+  const [isSending, setIsSending] = useState(false)
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedVideos, setSelectedVideos] = useState<string[]>([])
   const [selectedPromptTemplate, setSelectedPromptTemplate] = useState('default')
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // Beautify prompt templates
+  // Beautify prompt templates - Focus on people and filters only, no text overlay
   const promptTemplates = {
     default: {
       name: 'Default Enhancement',
-      prompt: 'Dramatically enhance the color saturation and contrast of this image, increase vibrancy and lighting effects to make the scene more vivid and impactful. Enhance detail clarity and sharpness. Add eye-catching and attractive English text titles or slogans on the image. The text should be large and clear, with prominent colors, positioned appropriately to attract audience attention. The text content should be short, powerful, and engaging.'
+      prompt: 'Enhance the people in this image with natural skin tone improvements, enhanced facial features clarity, and better lighting on faces. Apply professional color grading filters to improve overall image quality with vibrant but natural colors. Do NOT add any text or typography to the image.'
     },
     vibrant: {
       name: 'Vibrant Colors',
-      prompt: 'Transform this image into a vibrant masterpiece! Boost color saturation dramatically, enhance lighting to make it pop, and add bold, attention-grabbing text overlay. Make it impossible to scroll past!'
+      prompt: 'Apply vibrant color filters to enhance the people in the image. Improve skin tones, brighten faces, and boost saturation for a lively, eye-catching look. Focus on making the subjects stand out with enhanced lighting. Do NOT add any text to the image.'
     },
     professional: {
       name: 'Professional Polish',
-      prompt: 'Give this image a professional polish with balanced color grading, enhanced clarity, and elegant text overlay. Create a sophisticated look that commands attention while maintaining authenticity.'
+      prompt: 'Apply professional portrait enhancement focusing on the people in the image. Refine skin tones, enhance facial details, and apply balanced color grading filters. Create a polished, magazine-quality look without adding any text or overlays.'
     },
     dramatic: {
       name: 'Dramatic Impact',
-      prompt: 'Create maximum dramatic impact! Amplify contrast, add cinematic lighting effects, and bold typography that screams for attention. Make every pixel work to stop the scroll!'
+      prompt: 'Apply dramatic filters with high contrast and cinematic lighting focused on the people. Enhance facial features, add depth with shadows and highlights, and create an impactful visual style. Do NOT add text or typography.'
     },
     minimal: {
       name: 'Minimal Clean',
-      prompt: 'Apply clean, minimal enhancements with subtle color correction and refined details. Add simple, elegant text that complements the image without overwhelming it.'
+      prompt: 'Apply subtle, clean filters to enhance the people naturally. Gentle skin retouching, soft color correction, and refined lighting. Keep the enhancement minimal and authentic-looking. Do NOT add any text to the image.'
     }
   }
 
@@ -126,14 +129,31 @@ export default function Profile() {
 
   const handleBeautifySelected = async () => {
     if (!profile || selectedVideos.length === 0) {
-      addMessage('system', 'Please select videos to enhance')
       return
     }
 
+    const funMessages = [
+      '✨ Casting some AI magic spells...',
+      '🎨 Painting with pixels and dreams...',
+      '🚀 Launching beauty rockets...',
+      '💫 Sprinkling digital fairy dust...',
+      '🎭 Transforming pixels into masterpieces...',
+      '🌟 Making your photos Instagram-jealous...',
+      '🎪 Rolling out the red carpet for your images...',
+      '🔮 Consulting the crystal ball of beauty...',
+      '💎 Polishing those gems to perfection...',
+      '🎯 Hitting that sweet spot of stunning...',
+      '🌈 Adding a rainbow of awesomeness...',
+      '🎨 Bob Ross would be proud...',
+      '✨ Bibbidi-Bobbidi-Boo! Working on it...',
+      '🔥 Heating up those cold pixels...',
+      '💖 Giving your covers some extra love...'
+    ]
+
+    const getRandomMessage = () => funMessages[Math.floor(Math.random() * funMessages.length)]
+
     setIsProcessing(true)
-    setIsChatOpen(true)
-    addMessage('user', `Batch enhance ${selectedVideos.length} covers`)
-    addMessage('bot', `🎬 Starting batch enhancement for ${selectedVideos.length} covers! ${getRandomEnhancingMessage()}`)
+    setProcessingProgress(`${getRandomMessage()} Starting batch enhancement...`)
 
     let successCount = 0
     let failCount = 0
@@ -147,7 +167,7 @@ export default function Profile() {
       const video = profile.videos[videoIndex]
       
       try {
-        addMessage('bot', `[${i + 1}/${selectedVideos.length}] ${getRandomEnhancingMessage()}`)
+        setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ${getRandomMessage()}`)
 
         const originalCover = video.cover
         const coverImage = originalCover.includes('/api/proxy-image?url=')
@@ -159,7 +179,7 @@ export default function Profile() {
         const editResponse = await imageApi.editImage(coverImage, prompt)
         const taskId = editResponse.data.taskId
 
-        // 轮询查询结果
+        // Poll for result
         let attempts = 0
         const maxAttempts = 30
         let beautified = false
@@ -187,14 +207,14 @@ export default function Profile() {
               
               successCount++
               beautified = true
-              addMessage('bot', `✨ [${i + 1}/${selectedVideos.length}] Boom! Looking absolutely stunning!`)
+              setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 🎉 Boom! Looking absolutely fire!`)
             } else if (status === 'TASK_STATUS_FAILED') {
               failCount++
               beautified = true
-              addMessage('bot', `❌ [${i + 1}/${selectedVideos.length}] Enhancement failed`)
+              setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ❌ Oops! This one didn't cooperate...`)
             }
           } catch (error) {
-            // 继续轮询
+            // Continue polling
           }
           
           attempts++
@@ -202,35 +222,50 @@ export default function Profile() {
 
         if (!beautified) {
           failCount++
-          addMessage('bot', `⏱️ [${i + 1}/${selectedVideos.length}] Enhancement timeout`)
+          setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ⏱️ Taking too long... moving on!`)
         }
       } catch (error) {
         failCount++
-        addMessage('bot', `❌ [${i + 1}/${selectedVideos.length}] Enhancement failed`)
+        setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 💥 Something went kaboom!`)
       }
     }
 
-    addMessage('bot', `🎊 Mission accomplished! ${successCount} masterpieces created! ${failCount > 0 ? `(${failCount} didn't make the cut)` : 'Perfect score! 💯'}`)
-    setIsProcessing(false)
-    setIsSelectionMode(false)
-    setSelectedVideos([])
+    setProcessingProgress(`🎊 Mission accomplished! ${successCount} stunning covers created! ${failCount > 0 ? `(${failCount} rebels refused to cooperate 😅)` : 'Perfect score! 💯'}`)
+    setTimeout(() => {
+      setIsProcessing(false)
+      setProcessingProgress('')
+      setIsSelectionMode(false)
+      setSelectedVideos([])
+    }, 3000)
   }
 
   const handleBeautifyCover = async () => {
     if (!profile || !profile.videos[0]) {
-      addMessage('system', 'No cover image found')
       return
     }
 
+    const funMessages = [
+      '✨ Waving the magic wand...',
+      '🎨 Painting with AI brushes...',
+      '🚀 Launching into beauty space...',
+      '💫 Sprinkling stardust...',
+      '🎭 Creating a masterpiece...',
+      '🌟 Making it shine...',
+      '🎪 Rolling out the magic carpet...',
+      '🔮 Consulting the beauty oracle...',
+      '💎 Turning pixels into diamonds...',
+      '🎯 Aiming for perfection...'
+    ]
+
+    const getRandomMessage = () => funMessages[Math.floor(Math.random() * funMessages.length)]
+
     setIsProcessing(true)
-    setIsChatOpen(true)
-    addMessage('user', 'Enhance cover')
-    addMessage('bot', `${getRandomEnhancingMessage()} Hang tight! ⏳`)
+    setProcessingProgress(getRandomMessage())
 
     try {
       const originalCover = profile.videos[0].cover
       
-      console.log('🎨 Start enhancing cover:', {
+      console.log('Start enhancing cover:', {
         originalCoverURL: originalCover,
         usingProxy: originalCover.includes('/api/proxy-image')
       })
@@ -240,7 +275,7 @@ export default function Profile() {
         ? decodeURIComponent(originalCover.split('url=')[1]?.split('&')[0] || originalCover)
         : originalCover
       
-      console.log('📤 Submit enhancement task:', coverImage)
+      console.log('Submit enhancement task:', coverImage)
       
       const prompt = promptTemplates[selectedPromptTemplate as keyof typeof promptTemplates]?.prompt || promptTemplates.default.prompt
       
@@ -248,7 +283,9 @@ export default function Profile() {
       const editResponse = await imageApi.editImage(coverImage, prompt)
       const taskId = editResponse.data.taskId
       
-      console.log('✅ Task ID:', taskId)
+      console.log('Task ID:', taskId)
+
+      setProcessingProgress('🎨 AI is working its magic...')
 
       // Poll for result
       let attempts = 0
@@ -259,11 +296,10 @@ export default function Profile() {
           const resultResponse = await imageApi.getTaskResult(taskId)
           const { status, images, progress } = resultResponse.data
           
-          console.log('📋 Task status query:', { 
+          console.log('Task status query:', { 
             status: status, 
             progress: progress,
-            imageCount: images?.length || 0,
-            fullResponse: resultResponse.data
+            imageCount: images?.length || 0
           })
 
           if (status === 'TASK_STATUS_SUCCEED' && images.length > 0) {
@@ -272,81 +308,107 @@ export default function Profile() {
             // Use proxy URL to solve CORS issues
             const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(beautifiedImage)}&t=${Date.now()}`
             
-            console.log('✅ Image enhancement successful!', {
-              taskStatus: status,
-              originalImageURL: beautifiedImage,
-              proxyURL: proxyUrl,
-              imageChanged: !originalCover.includes(beautifiedImage)
-            })
-            
-            console.log('📊 Comparison info:', {
-              oldCover: originalCover.substring(0, 100) + '...',
-              newCover: proxyUrl.substring(0, 100) + '...',
-              isSame: originalCover === proxyUrl
-            })
+            console.log('Image enhancement successful!')
             
             setProfile(prev => {
               if (!prev) return prev
-              const oldCover = prev.videos[0].cover
               const updatedVideos = [...prev.videos]
               updatedVideos[0] = {
                 ...updatedVideos[0],
                 cover: proxyUrl
               }
-              console.log('🔄 Cover update:', {
-                before: oldCover.substring(0, 50) + '...',
-                after: proxyUrl.substring(0, 50) + '...'
-              })
               return {
                 ...prev,
                 videos: updatedVideos
               }
             })
             
-            // Add completion message
-            const comparisonMessage = `🎉 Ta-da! Your cover is looking absolutely fire! 🔥`
-            
-            addMessage('bot', comparisonMessage, proxyUrl)
-            setIsProcessing(false)
+            setProcessingProgress('🎉 Boom! Looking absolutely stunning!')
+            setTimeout(() => {
+              setIsProcessing(false)
+              setProcessingProgress('')
+            }, 2000)
           } else if (status === 'TASK_STATUS_FAILED') {
-            addMessage('bot', 'Sorry, enhancement failed. Please try again later')
-            setIsProcessing(false)
+            setProcessingProgress('❌ Oops! Something went wrong...')
+            setTimeout(() => {
+              setIsProcessing(false)
+              setProcessingProgress('')
+            }, 2000)
           } else if (attempts < maxAttempts) {
             attempts++
+            // Update with fun messages periodically
+            if (attempts % 3 === 0) {
+              setProcessingProgress(getRandomMessage())
+            }
             setTimeout(checkTask, 1000) // Retry after 1 second
           } else {
-            addMessage('bot', 'Enhancement timeout, please try again later')
-            setIsProcessing(false)
+            setProcessingProgress('⏱️ Taking longer than expected... try again?')
+            setTimeout(() => {
+              setIsProcessing(false)
+              setProcessingProgress('')
+            }, 2000)
           }
         } catch (error) {
           console.error('Failed to query task:', error)
-          addMessage('bot', 'Failed to query enhancement result')
-          setIsProcessing(false)
+          setProcessingProgress('💥 Failed to check status...')
+          setTimeout(() => {
+            setIsProcessing(false)
+            setProcessingProgress('')
+          }, 2000)
         }
       }
 
       setTimeout(checkTask, 1000) // Start querying after 1 second
     } catch (error) {
       console.error('Failed to enhance cover:', error)
-      addMessage('bot', 'Failed to enhance cover, please try again later')
-      setIsProcessing(false)
+      setProcessingProgress('💥 Enhancement failed! Please try again.')
+      setTimeout(() => {
+        setIsProcessing(false)
+        setProcessingProgress('')
+      }, 2000)
     }
   }
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!inputMessage.trim() || isProcessing) return
+    if (!inputMessage.trim() || isSending) return
 
     const userMessage = inputMessage.trim()
     setInputMessage('')
     addMessage('user', userMessage)
+    setIsSending(true)
 
     try {
-      const response = await profileApi.sendMessage(username, userMessage)
-      addMessage('bot', response.data.response.message)
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          conversationHistory: conversationHistory
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success && data.message) {
+        addMessage('bot', data.message)
+        
+        // Update conversation history
+        setConversationHistory(prev => [
+          ...prev,
+          { role: 'user', content: userMessage },
+          { role: 'assistant', content: data.message }
+        ])
+      } else {
+        addMessage('bot', 'I apologize, but I\'m having trouble responding right now. Please try again.')
+      }
     } catch (error) {
       console.error('Failed to send message:', error)
-      addMessage('bot', 'Got it! I\'m learning how to better respond to you 🤖')
+      addMessage('bot', 'I apologize, but I\'m having trouble connecting right now. Please try again.')
+    } finally {
+      setIsSending(false)
     }
   }
 
@@ -465,7 +527,7 @@ export default function Profile() {
           <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-primary to-pink-500 text-white rounded-t-2xl">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-5 h-5" />
-              <h3 className="font-semibold">AI Assistant</h3>
+              <h3 className="font-semibold">Andrew - AI Butler</h3>
             </div>
             <button
               onClick={() => setIsChatOpen(false)}
@@ -488,12 +550,12 @@ export default function Profile() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder="Type a message..."
-                disabled={isProcessing}
+                disabled={isSending}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 text-sm"
               />
               <button
                 type="submit"
-                disabled={!inputMessage.trim() || isProcessing}
+                disabled={!inputMessage.trim() || isSending}
                 className="p-2 bg-primary text-white rounded-full hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4" />
@@ -547,6 +609,22 @@ export default function Profile() {
               >
                 Upload
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Progress Bar for Enhancement */}
+      {isProcessing && processingProgress && (
+        <div 
+          className="fixed left-0 right-0 z-50 px-4 animate-in slide-in-from-bottom duration-300"
+          style={{ bottom: 'calc(33.33vh)' }}
+        >
+          <div className="max-w-2xl mx-auto bg-black/70 backdrop-blur-md text-white px-6 py-4 rounded-full shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm font-medium flex-1">{processingProgress}</p>
+              <Sparkles className="w-5 h-5 text-pink-300 animate-pulse" />
             </div>
           </div>
         </div>

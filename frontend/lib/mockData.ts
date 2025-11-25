@@ -28,33 +28,33 @@ function generatePostImage(type: 'original' | 'edited', index: number): string {
   }
 }
 
-// 模拟社区帖子数据（用于测试 Explorer 页面）
+// Mock social community posts data (for Explorer page testing)
 export const mockPosts: Post[] = [
   {
     _id: 'post_0',
     userId: 'user1',
-    username: '小红书达人',
+    username: 'SarahCreates',
     avatar: generateAvatar('user1'),
     originalImage: generatePostImage('original', 0),
     editedImage: generatePostImage('edited', 0),
-    prompt: '增强色彩，添加温暖的日落滤镜',
-    description: '尝试了 AI 美化功能，效果太棒了！🌅',
+    prompt: 'Enhance colors, add warm sunset filter',
+    description: 'Tried the AI enhancement feature, the results are amazing! 🌅',
     likes: ['user2', 'user3'],
     comments: [
       {
         _id: 'comment_1',
         userId: 'user2',
-        username: '摄影爱好者',
+        username: 'PhotoEnthusiast',
         avatar: generateAvatar('user2'),
-        content: '效果真不错！想知道用的什么 prompt？',
+        content: 'The effect looks great! What prompt did you use?',
         createdAt: new Date('2024-01-15'),
         replies: [
           {
             _id: 'reply_1',
             userId: 'user1',
-            username: '小红书达人',
+            username: 'SarahCreates',
             avatar: generateAvatar('user1'),
-            content: '就是简单的日落滤镜描述，AI 自动优化了',
+            content: 'Just a simple sunset filter description, AI optimized it automatically',
             createdAt: new Date('2024-01-15'),
             replies: []
           }
@@ -66,12 +66,12 @@ export const mockPosts: Post[] = [
   {
     _id: 'post_1',
     userId: 'user3',
-    username: 'TikTok 创作者',
+    username: 'TikTokCreator',
     avatar: generateAvatar('user3'),
     originalImage: generatePostImage('original', 1),
     editedImage: generatePostImage('edited', 1),
-    prompt: '变成赛博朋克风格，增加霓虹灯效果',
-    description: '赛博朋克风格转换 ⚡️',
+    prompt: 'Transform to cyberpunk style, add neon light effects',
+    description: 'Cyberpunk style transformation ⚡️',
     likes: ['user1'],
     comments: [],
     createdAt: new Date('2024-01-14')
@@ -79,20 +79,20 @@ export const mockPosts: Post[] = [
   {
     _id: 'post_2',
     userId: 'user4',
-    username: '美食博主',
+    username: 'FoodieLife',
     avatar: generateAvatar('user4'),
     originalImage: generatePostImage('original', 2),
     editedImage: generatePostImage('edited', 2),
-    prompt: '让食物看起来更美味，增强饱和度和对比度',
-    description: '美食照片这样修就对了！😋',
+    prompt: 'Make food look more delicious, enhance saturation and contrast',
+    description: 'This is how you edit food photos! 😋',
     likes: ['user1', 'user2', 'user3'],
     comments: [
       {
         _id: 'comment_2',
         userId: 'user5',
-        username: '吃货小王',
+        username: 'HungryTraveler',
         avatar: generateAvatar('user5'),
-        content: '看起来好好吃啊！',
+        content: 'Looks so delicious!',
         createdAt: new Date('2024-01-14'),
         replies: []
       }
@@ -102,12 +102,12 @@ export const mockPosts: Post[] = [
   {
     _id: 'post_3',
     userId: 'user5',
-    username: '旅行vlogger',
+    username: 'TravelVlogger',
     avatar: generateAvatar('user5'),
     originalImage: generatePostImage('original', 3),
     editedImage: generatePostImage('edited', 3),
-    prompt: '添加梦幻的天空和云彩效果',
-    description: '旅行照片后期处理 ☁️',
+    prompt: 'Add dreamy sky and cloud effects',
+    description: 'Travel photo post-processing ☁️',
     likes: [],
     comments: [],
     createdAt: new Date('2024-01-13')
@@ -115,20 +115,20 @@ export const mockPosts: Post[] = [
   {
     _id: 'post_4',
     userId: 'user6',
-    username: '时尚博主',
+    username: 'FashionGuru',
     avatar: generateAvatar('user6'),
     originalImage: generatePostImage('original', 4),
     editedImage: generatePostImage('edited', 4),
-    prompt: '增加时尚杂志风格，提升质感',
-    description: '时尚大片既视感 💃',
+    prompt: 'Add fashion magazine style, enhance texture',
+    description: 'Fashion editorial vibes 💃',
     likes: ['user1', 'user3', 'user4'],
     comments: [
       {
         _id: 'comment_3',
         userId: 'user2',
-        username: '摄影爱好者',
+        username: 'PhotoEnthusiast',
         avatar: generateAvatar('user2'),
-        content: '质感提升太多了！',
+        content: 'The texture improvement is incredible!',
         createdAt: new Date('2024-01-13'),
         replies: []
       }

@@ -12,13 +12,14 @@ export async function POST(request: NextRequest) {
 
     if (!prompt || !imageUrl) {
       return NextResponse.json(
-        { error: '请提供 prompt 和 imageUrl' },
+        { error: 'Please provide prompt and imageUrl' },
         { status: 400 }
       );
     }
 
-    console.log('🎨 提交图像美化任务:', { prompt, imageUrl: imageUrl.substring(0, 50) + '...' });
-    console.log('📡 API Key 状态:', IMAGE_API_KEY ? '已配置' : '未配置');
+    console.log('Submit image enhancement task:', { prompt, imageUrl: imageUrl.substring(0, 50) + '...' });
+    console.log('API Key status:', IMAGE_API_KEY ? 'Configured' : 'Not configured');
+    console.log('API URL:', `${IMAGE_API_URL}/qwen-image-edit`);
 
     const response = await axios.post(
       `${IMAGE_API_URL}/qwen-image-edit`,
@@ -31,22 +32,29 @@ export async function POST(request: NextRequest) {
         headers: {
           'Authorization': IMAGE_API_KEY,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 30000
       }
     );
 
     const { task_id } = response.data;
-    console.log('✅ 任务创建成功:', task_id);
+    console.log('Task created successfully:', task_id);
     
     return NextResponse.json({ 
       success: true, 
       taskId: task_id 
     });
   } catch (error: any) {
-    console.error('❌ 图像编辑任务提交失败:', error.response?.data || error.message);
+    console.error('Image editing task failed:', error.response?.data || error.message);
+    console.error('Error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url
+    });
     return NextResponse.json(
       { 
-        error: '图像编辑任务提交失败', 
+        error: 'Image editing task failed', 
         details: error.response?.data || error.message 
       },
       { status: 500 }

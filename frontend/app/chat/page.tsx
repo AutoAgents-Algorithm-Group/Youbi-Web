@@ -49,6 +49,8 @@ export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState<Contact | null>(null)
   const [messageInput, setMessageInput] = useState('')
   const [showMenu, setShowMenu] = useState(false)
+  const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([])
+  const [isSending, setIsSending] = useState(false)
   
   // Mock data
   const [contacts] = useState<Contact[]>([
@@ -92,32 +94,90 @@ export default function ChatPage() {
     }
   ])
 
-  const [messages] = useState<Message[]>([
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      senderId: '1',
-      content: 'Hey! How are you doing?',
+      senderId: 'andrew',
+      content: 'Hi! I\'m Andrew, your AI butler. I\'m here to help you with anything you need. I can connect you with Ray for design help or Frank for analytics insights. How can I assist you today?',
       timestamp: new Date(Date.now() - 120000),
-      type: 'text'
-    },
-    {
-      id: '2',
-      senderId: 'me',
-      content: 'Hi! I\'m doing great, thanks!',
-      timestamp: new Date(Date.now() - 60000),
       type: 'text'
     }
   ])
 
   const filteredContacts = contacts.filter(c => c.type === activeTab)
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!messageInput.trim()) return
+    if (!messageInput.trim() || isSending) return
     
-    // TODO: Implement message sending
-    console.log('Send message:', messageInput)
+    const userMessage = messageInput.trim()
     setMessageInput('')
+    
+    // Add user message to UI
+    const userMsgId = `msg_${Date.now()}`
+    setMessages(prev => [...prev, {
+      id: userMsgId,
+      senderId: 'me',
+      content: userMessage,
+      timestamp: new Date(),
+      type: 'text'
+    }])
+    
+    setIsSending(true)
+    
+    try {
+      // Call AI Agent API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          conversationHistory: conversationHistory
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success && data.message) {
+        // Add agent response to UI
+        setMessages(prev => [...prev, {
+          id: `msg_${Date.now()}_bot`,
+          senderId: data.agent.type || 'andrew',
+          content: data.message,
+          timestamp: new Date(),
+          type: 'text'
+        }])
+        
+        // Update conversation history
+        setConversationHistory(prev => [
+          ...prev,
+          { role: 'user', content: userMessage },
+          { role: 'assistant', content: data.message }
+        ])
+      } else {
+        // Fallback message
+        setMessages(prev => [...prev, {
+          id: `msg_${Date.now()}_bot`,
+          senderId: 'andrew',
+          content: 'I apologize, but I\'m having trouble responding right now. Please try again.',
+          timestamp: new Date(),
+          type: 'text'
+        }])
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      setMessages(prev => [...prev, {
+        id: `msg_${Date.now()}_bot`,
+        senderId: 'andrew',
+        content: 'I apologize, but I\'m having trouble connecting right now. Please try again.',
+        timestamp: new Date(),
+        type: 'text'
+      }])
+    } finally {
+      setIsSending(false)
+    }
   }
 
   const handleLogout = () => {
@@ -187,21 +247,21 @@ export default function ChatPage() {
             </div>
           </div>
           
-          {/* Balance Cards */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/30 mb-2">
-                <Zap className="w-5 h-5 text-white" />
+          {/* Balance Cards - Compact Version */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center">
+              <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/30 mb-1.5">
+                <Zap className="w-4 h-4 text-white" />
               </div>
-              <p className="text-2xl font-bold text-white mb-1">{user.energy.toLocaleString()}</p>
-              <p className="text-sm text-white/80">Energy</p>
+              <p className="text-xl font-bold text-white mb-0.5">{user.energy.toLocaleString()}</p>
+              <p className="text-xs text-white/80">Energy</p>
             </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/30 mb-2">
-                <Coins className="w-5 h-5 text-white" />
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center">
+              <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/30 mb-1.5">
+                <Coins className="w-4 h-4 text-white" />
               </div>
-              <p className="text-2xl font-bold text-white mb-1">{user.points.toLocaleString()}</p>
-              <p className="text-sm text-white/80">Points</p>
+              <p className="text-xl font-bold text-white mb-0.5">{user.points.toLocaleString()}</p>
+              <p className="text-xs text-white/80">Points</p>
             </div>
           </div>
         </div>
@@ -305,28 +365,41 @@ export default function ChatPage() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ height: 'calc(100% - 130px)' }}>
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.senderId === 'me' ? 'justify-end' : 'justify-start'}`}
-                  >
+                {messages.map((message) => {
+                  const isMe = message.senderId === 'me'
+                  const isAndrew = message.senderId === 'andrew'
+                  const isRay = message.senderId === 'ray'
+                  const isFrank = message.senderId === 'frank'
+                  
+                  return (
                     <div
-                      className={`max-w-[70%] px-4 py-2 rounded-2xl ${
-                        message.senderId === 'me'
-                          ? 'bg-primary text-white rounded-tr-none'
-                          : 'bg-gray-100 text-gray-900 rounded-tl-none'
-                      }`}
+                      key={message.id}
+                      className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p className="text-sm">{message.content}</p>
-                      <p className="text-xs mt-1 opacity-70">
-                        {message.timestamp.toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
+                      <div
+                        className={`max-w-[70%] px-4 py-2 rounded-2xl ${
+                          isMe
+                            ? 'bg-primary text-white rounded-tr-none'
+                            : isAndrew
+                            ? 'bg-gray-100 text-gray-900 rounded-tl-none border-l-4 border-blue-500'
+                            : isRay
+                            ? 'bg-purple-50 text-purple-900 rounded-tl-none border-l-4 border-purple-500'
+                            : isFrank
+                            ? 'bg-green-50 text-green-900 rounded-tl-none border-l-4 border-green-500'
+                            : 'bg-gray-100 text-gray-900 rounded-tl-none'
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        <p className="text-xs mt-1 opacity-70">
+                          {message.timestamp.toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               {/* Message Input */}
@@ -337,11 +410,12 @@ export default function ChatPage() {
                     value={messageInput}
                     onChange={(e) => setMessageInput(e.target.value)}
                     placeholder="Type a message..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    disabled={isSending}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100"
                   />
                   <button
                     type="submit"
-                    disabled={!messageInput.trim()}
+                    disabled={!messageInput.trim() || isSending}
                     className="p-2 bg-primary text-white rounded-full hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-5 h-5" />
