@@ -62,9 +62,6 @@ export default function CreatePage() {
               <div className="flex h-full">
                 {/* Before (Left Half) */}
                 <div className="w-1/2 relative bg-gray-200 flex items-center justify-center border-r-2 border-white">
-                  <div className="absolute top-4 left-4 bg-gray-700/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium">
-                    Before
-                  </div>
                   {/* Placeholder for before image - can be replaced with actual image */}
                   <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
                     <div className="text-center p-8">
@@ -74,14 +71,14 @@ export default function CreatePage() {
                       <p className="text-gray-600 font-medium">Original Cover</p>
                     </div>
                   </div>
+                  {/* Before Badge - moved after content for higher z-index */}
+                  <div className="absolute top-4 left-4 bg-gray-700/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium shadow-lg z-20">
+                    Before
+                  </div>
                 </div>
                 
                 {/* After (Right Half) */}
                 <div className="w-1/2 relative bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center">
-                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-primary px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-                    <span className="text-lg">✨</span>
-                    <span>After</span>
-                  </div>
                   {/* Placeholder for after image - can be replaced with actual image */}
                   <div className="w-full h-full bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center">
                     <div className="text-center p-8">
@@ -91,12 +88,17 @@ export default function CreatePage() {
                       <p className="text-white font-medium">AI Enhanced</p>
                     </div>
                   </div>
+                  {/* After Badge - moved after content for higher z-index */}
+                  <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-primary px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1 shadow-lg z-20">
+                    <span className="text-lg">✨</span>
+                    <span>After</span>
+                  </div>
                 </div>
               </div>
               
               {/* Center Divider with Arrow */}
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center">
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
+                <div className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center border-2 border-gray-100">
                   <ArrowRight className="w-6 h-6 text-primary" />
                 </div>
               </div>
@@ -112,19 +114,19 @@ export default function CreatePage() {
               </p>
               
               {/* Username Input Form */}
-              <form onSubmit={handleSubmit} className="flex gap-3">
+              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter TikTok username (e.g., @username)"
-                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-base"
+                  placeholder="TikTok username"
+                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-base placeholder:text-gray-400"
                   required
                 />
                 <button
                   type="submit"
                   disabled={!username.trim()}
-                  className="px-6 py-3 bg-gradient-to-r from-primary to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transition transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2"
+                  className="px-6 py-3 bg-gradient-to-r from-primary to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transition transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 whitespace-nowrap"
                 >
                   <span>Go</span>
                   <ArrowRight className="w-5 h-5" />
