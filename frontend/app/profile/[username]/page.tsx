@@ -92,14 +92,9 @@ export default function Profile() {
         return !isEnhanced
       })
       
-      // Auto-select the first unenhanced video
+      // Auto-select the first unenhanced video (but don't auto-beautify)
       if (firstUnenhancedVideo) {
         setSelectedVideos([firstUnenhancedVideo.id])
-        
-        // Auto-start beautification after a brief delay
-        setTimeout(() => {
-          autoBeautifyFirstVideo(fetchedProfile, firstUnenhancedVideo.id)
-        }, 500)
       }
     } catch (error: any) {
       console.error('Failed to fetch profile:', error)
@@ -287,27 +282,73 @@ export default function Profile() {
     }
 
     const funMessages = [
-      '✨ Casting some AI magic spells...',
-      '🎨 Painting with pixels and dreams...',
-      '🚀 Launching beauty rockets...',
-      '💫 Sprinkling digital fairy dust...',
-      '🎭 Transforming pixels into masterpieces...',
-      '🌟 Making your photos Instagram-jealous...',
-      '🎪 Rolling out the red carpet for your images...',
-      '🔮 Consulting the crystal ball of beauty...',
-      '💎 Polishing those gems to perfection...',
-      '🎯 Hitting that sweet spot of stunning...',
-      '🌈 Adding a rainbow of awesomeness...',
-      '🎨 Bob Ross would be proud...',
-      '✨ Bibbidi-Bobbidi-Boo! Working on it...',
-      '🔥 Heating up those cold pixels...',
-      '💖 Giving your covers some extra love...'
+      '🎨 Hold my coffee, I got this...',
+      '✨ *Puts on wizard hat* Let\'s do this!',
+      '🚀 To infinity... and beyond gorgeous!',
+      '💫 Mixing pixels with a dash of awesome sauce...',
+      '🎭 Channeling my inner Picasso... but cooler!',
+      '🌟 Making pixels jealous of each other...',
+      '🎪 *Cracks knuckles* Time to work some magic!',
+      '🔮 The crystal ball says... STUNNING!',
+      '💎 Turning good into "OMG WOW!"',
+      '🎯 Activating beast mode... 3... 2... 1...',
+      '🌈 Adding sprinkles of pure awesomeness...',
+      '🎨 Bob Ross is watching... no pressure!',
+      '✨ *Waves magic wand dramatically*',
+      '🔥 About to drop some HOT pixels!',
+      '💖 Giving your covers a glow-up they deserve!',
+      '🎪 Ladies and gentlemen... the show begins!',
+      '🚁 Deploying beauty drones...',
+      '🌊 Riding the wave of fabulousness...',
+      '⚡ Charging up the awesome-inator!',
+      '🎸 Time to rock this cover like a star!'
     ]
 
-    const getRandomMessage = () => funMessages[Math.floor(Math.random() * funMessages.length)]
+    const progressMessages = [
+      '🎨 Mixing the perfect color cocktail...',
+      '✨ Sprinkling magic pixels like confetti...',
+      '🚀 Houston, we\'re going gorgeous!',
+      '💫 Teaching pixels how to shine...',
+      '🎭 Applying the "wow" filter...',
+      '🌟 Making stars jealous...',
+      '🎪 Juggling beauty and brilliance...',
+      '🔮 Consulting the style gods...',
+      '💎 Polish level: LEGENDARY!',
+      '🎯 Hitting the sweet spot of stunning...',
+      '🌈 Painting with all colors of awesome...',
+      '🎨 Creating art that makes Mona Lisa jealous...',
+      '✨ Bibbidi-Bobbidi-BEAUTIFUL!',
+      '🔥 Setting beauty standards on fire!',
+      '💖 Spreading love one pixel at a time...',
+      '🎪 The circus of cuteness is in town!',
+      '🚁 Flying high on cloud gorgeous!',
+      '🌊 Surfing the tsunami of trends!',
+      '⚡ Electrifying every single pixel!',
+      '🎸 Shredding on the beauty guitar!'
+    ]
+
+    const successMessages = [
+      '🎉 BOOM! Nailed it!',
+      '🌟 *Chef\'s kiss* Perfection!',
+      '✨ And that\'s how it\'s done!',
+      '🔥 Absolute fire! 🔥',
+      '💎 Flawless victory!',
+      '🎯 Bullseye! Direct hit to gorgeous!',
+      '🚀 Mission accomplished, captain!',
+      '🎪 *Takes a bow* Thank you, thank you!',
+      '💖 Another masterpiece for the collection!',
+      '⚡ KABOOM! Beauty bomb deployed!',
+      '🌈 Rainbow approved! ✓',
+      '🎨 Even Picasso is impressed!',
+      '✨ Magic successfully casted!',
+      '🔮 The prophecy was true!',
+      '🎭 Oscar-worthy transformation!'
+    ]
+
+    const getRandomMessage = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
 
     setIsProcessing(true)
-    setProcessingProgress(`${getRandomMessage()} Starting batch enhancement...`)
+    setProcessingProgress(`${getRandomMessage(funMessages)} Starting the show...`)
 
     let successCount = 0
     let failCount = 0
@@ -326,7 +367,7 @@ export default function Profile() {
         const video = profile.videos[videoIndex]
         
         try {
-          setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ${getRandomMessage()}`)
+          setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ${getRandomMessage(progressMessages)}`)
 
           const originalCover = video.cover
           const coverImage = originalCover.includes('/api/proxy-image?url=')
@@ -380,11 +421,11 @@ export default function Profile() {
                 successCount++
                 processedVideoIds.add(videoId)
                 beautified = true
-                setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 🎉 Boom! Looking absolutely fire!`)
+                setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ${getRandomMessage(successMessages)}`)
               } else if (status === 'TASK_STATUS_FAILED') {
                 failCount++
                 beautified = true
-                setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ❌ Oops! This one didn't cooperate...`)
+                setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 😅 Oops! This one\'s being stubborn...`)
               }
             } catch (error) {
               // Continue polling
@@ -395,26 +436,34 @@ export default function Profile() {
 
           if (!beautified) {
             failCount++
-            setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ⏱️ Taking too long... moving on!`)
+            setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ⏱️ Taking a coffee break... moving on!`)
           }
         } catch (error) {
           console.error('Enhancement error for video:', videoId, error)
           failCount++
-          setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 💥 Something went wrong!`)
+          setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 💥 Plot twist! This one\'s tricky...`)
           await new Promise(resolve => setTimeout(resolve, 1000)) // Brief pause before next
         }
       }
 
-      // Final summary
+      // Final summary with fun messages
       const totalProcessed = successCount + failCount
       if (successCount > 0) {
-        setProcessingProgress(`🎊 Done! ${successCount} cover${successCount > 1 ? 's' : ''} enhanced! ${failCount > 0 ? `(${failCount} failed)` : '💯'}`)
+        const finalMessages = [
+          `🎊 Fantastic! ${successCount} cover${successCount > 1 ? 's' : ''} looking absolutely gorgeous!`,
+          `🌟 Mission complete! ${successCount} masterpiece${successCount > 1 ? 's' : ''} created!`,
+          `✨ And... DONE! ${successCount} stunning cover${successCount > 1 ? 's' : ''}!`,
+          `🔥 Hot off the press! ${successCount} beauty bomb${successCount > 1 ? 's' : ''} ready!`,
+          `💎 Flawless! ${successCount} gem${successCount > 1 ? 's' : ''} polished to perfection!`
+        ]
+        const finalMsg = getRandomMessage(finalMessages)
+        setProcessingProgress(failCount > 0 ? `${finalMsg} (${failCount} didn't make the cut 😅)` : `${finalMsg} 💯`)
       } else {
-        setProcessingProgress(`❌ Enhancement failed for all ${totalProcessed} cover${totalProcessed > 1 ? 's' : ''}. Please try again.`)
+        setProcessingProgress(`😅 Whoops! ${totalProcessed} rebel${totalProcessed > 1 ? 's' : ''} refused the makeover. Let\'s try again!`)
       }
     } catch (error) {
       console.error('Batch enhancement error:', error)
-      setProcessingProgress('❌ Batch enhancement failed. Please try again.')
+      setProcessingProgress('💥 Plot twist! Something went wrong. But hey, we can try again! 💪')
     } finally {
       // Always clean up, regardless of success or failure
       setTimeout(() => {
