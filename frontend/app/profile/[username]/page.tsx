@@ -169,7 +169,10 @@ export default function Profile() {
     const getRandomMessage = () => funMessages[Math.floor(Math.random() * funMessages.length)]
 
     const videoIndex = currentProfile.videos.findIndex(v => v.id === videoId)
-    if (videoIndex === -1) return
+    if (videoIndex === -1) {
+      console.error('Video not found for auto-beautify:', videoId)
+      return
+    }
 
     const video = currentProfile.videos[videoIndex]
     
@@ -232,6 +235,9 @@ export default function Profile() {
             setTimeout(() => {
               setIsProcessing(false)
               setProcessingProgress('')
+              // Exit selection mode after successful auto-beautify
+              setIsSelectionMode(false)
+              setSelectedVideos([])
             }, 2000)
             
             beautified = true
@@ -255,17 +261,22 @@ export default function Profile() {
       // Provide more specific error messages
       let errorMessage = '❌ Auto-enhancement failed.'
       if (error.message?.includes('timeout')) {
-        errorMessage = '⏱️ Request timed out. The AI service might be busy. Try again or select manually.'
+        errorMessage = '⏱️ Request timed out. The AI service might be busy. Try manual selection.'
       } else if (error.code === 'ERR_NETWORK') {
         errorMessage = '🌐 Network error. Please check your connection.'
       } else if (error.response?.status === 500) {
-        errorMessage = '⚠️ AI service is temporarily unavailable. Please try manual enhancement.'
+        errorMessage = '⚠️ AI service is temporarily unavailable. Please try manual selection.'
       }
       
       setProcessingProgress(errorMessage)
+      
+      // Always clean up after failure
       setTimeout(() => {
         setIsProcessing(false)
         setProcessingProgress('')
+        // Keep selection mode active so user can manually retry
+        // But clear the auto-selected video
+        setSelectedVideos([])
       }, 5000) // Show error for 5 seconds
     }
   }
@@ -300,94 +311,119 @@ export default function Profile() {
 
     let successCount = 0
     let failCount = 0
+    const processedVideoIds = new Set<string>()
 
-    for (let i = 0; i < selectedVideos.length; i++) {
-      const videoId = selectedVideos[i]
-      const videoIndex = profile.videos.findIndex(v => v.id === videoId)
-      
-      if (videoIndex === -1) continue
-
-      const video = profile.videos[videoIndex]
-      
-      try {
-        setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ${getRandomMessage()}`)
-
-        const originalCover = video.cover
-        const coverImage = originalCover.includes('/api/proxy-image?url=')
-          ? decodeURIComponent(originalCover.split('url=')[1]?.split('&')[0] || originalCover)
-          : originalCover
+    try {
+      for (let i = 0; i < selectedVideos.length; i++) {
+        const videoId = selectedVideos[i]
+        const videoIndex = profile.videos.findIndex(v => v.id === videoId)
         
-        const prompt = promptTemplates[selectedPromptTemplate as keyof typeof promptTemplates]?.prompt || promptTemplates.default.prompt
+        if (videoIndex === -1) {
+          failCount++
+          continue
+        }
+
+        const video = profile.videos[videoIndex]
         
-        const editResponse = await imageApi.editImage(coverImage, prompt)
-        const taskId = editResponse.data.taskId
+        try {
+          setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ${getRandomMessage()}`)
 
-        // Poll for result
-        let attempts = 0
-        const maxAttempts = 30
-        let beautified = false
-
-        while (attempts < maxAttempts && !beautified) {
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          const originalCover = video.cover
+          const coverImage = originalCover.includes('/api/proxy-image?url=')
+            ? decodeURIComponent(originalCover.split('url=')[1]?.split('&')[0] || originalCover)
+            : originalCover
           
-          try {
-            const resultResponse = await imageApi.getTaskResult(taskId)
-            const { status, images } = resultResponse.data
-
-            if (status === 'TASK_STATUS_SUCCEED' && images.length > 0) {
-              const beautifiedImage = images[0].image_url
-              const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(beautifiedImage)}&t=${Date.now()}`
-              
-              setProfile(prev => {
-                if (!prev) return prev
-                const updatedVideos = [...prev.videos]
-                // Save original cover before updating
-                const originalCover = updatedVideos[videoIndex].cover
-                if (!originalCovers[video.id]) {
-                  setOriginalCovers(prevCovers => ({
-                    ...prevCovers,
-                    [video.id]: originalCover
-                  }))
-                }
-                updatedVideos[videoIndex] = {
-                  ...updatedVideos[videoIndex],
-                  cover: proxyUrl
-                }
-                return { ...prev, videos: updatedVideos }
-              })
-              
-              successCount++
-              beautified = true
-              setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 🎉 Boom! Looking absolutely fire!`)
-            } else if (status === 'TASK_STATUS_FAILED') {
-              failCount++
-              beautified = true
-              setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ❌ Oops! This one didn't cooperate...`)
-            }
-          } catch (error) {
-            // Continue polling
+          const prompt = promptTemplates[selectedPromptTemplate as keyof typeof promptTemplates]?.prompt || promptTemplates.default.prompt
+          
+          const editResponse = await imageApi.editImage(coverImage, prompt)
+          
+          if (!editResponse.data.taskId) {
+            throw new Error('No task ID received')
           }
           
-          attempts++
-        }
+          const taskId = editResponse.data.taskId
 
-        if (!beautified) {
+          // Poll for result
+          let attempts = 0
+          const maxAttempts = 30
+          let beautified = false
+
+          while (attempts < maxAttempts && !beautified) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            
+            try {
+              const resultResponse = await imageApi.getTaskResult(taskId)
+              const { status, images } = resultResponse.data
+
+              if (status === 'TASK_STATUS_SUCCEED' && images.length > 0) {
+                const beautifiedImage = images[0].image_url
+                const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(beautifiedImage)}&t=${Date.now()}`
+                
+                setProfile(prev => {
+                  if (!prev) return prev
+                  const updatedVideos = [...prev.videos]
+                  // Save original cover before updating
+                  const originalCover = updatedVideos[videoIndex].cover
+                  if (!originalCovers[video.id]) {
+                    setOriginalCovers(prevCovers => ({
+                      ...prevCovers,
+                      [video.id]: originalCover
+                    }))
+                  }
+                  updatedVideos[videoIndex] = {
+                    ...updatedVideos[videoIndex],
+                    cover: proxyUrl
+                  }
+                  return { ...prev, videos: updatedVideos }
+                })
+                
+                successCount++
+                processedVideoIds.add(videoId)
+                beautified = true
+                setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 🎉 Boom! Looking absolutely fire!`)
+              } else if (status === 'TASK_STATUS_FAILED') {
+                failCount++
+                beautified = true
+                setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ❌ Oops! This one didn't cooperate...`)
+              }
+            } catch (error) {
+              // Continue polling
+            }
+            
+            attempts++
+          }
+
+          if (!beautified) {
+            failCount++
+            setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ⏱️ Taking too long... moving on!`)
+          }
+        } catch (error) {
+          console.error('Enhancement error for video:', videoId, error)
           failCount++
-          setProcessingProgress(`[${i + 1}/${selectedVideos.length}] ⏱️ Taking too long... moving on!`)
+          setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 💥 Something went wrong!`)
+          await new Promise(resolve => setTimeout(resolve, 1000)) // Brief pause before next
         }
-      } catch (error) {
-        failCount++
-        setProcessingProgress(`[${i + 1}/${selectedVideos.length}] 💥 Something went kaboom!`)
       }
-    }
 
-    setProcessingProgress(`🎊 Mission accomplished! ${successCount} stunning covers created! ${failCount > 0 ? `(${failCount} rebels refused to cooperate 😅)` : 'Perfect score! 💯'}`)
-    setTimeout(() => {
-      setIsProcessing(false)
-      setProcessingProgress('')
-      setIsSelectionMode(false)
-      setSelectedVideos([])
-    }, 3000)
+      // Final summary
+      const totalProcessed = successCount + failCount
+      if (successCount > 0) {
+        setProcessingProgress(`🎊 Done! ${successCount} cover${successCount > 1 ? 's' : ''} enhanced! ${failCount > 0 ? `(${failCount} failed)` : '💯'}`)
+      } else {
+        setProcessingProgress(`❌ Enhancement failed for all ${totalProcessed} cover${totalProcessed > 1 ? 's' : ''}. Please try again.`)
+      }
+    } catch (error) {
+      console.error('Batch enhancement error:', error)
+      setProcessingProgress('❌ Batch enhancement failed. Please try again.')
+    } finally {
+      // Always clean up, regardless of success or failure
+      setTimeout(() => {
+        setIsProcessing(false)
+        setProcessingProgress('')
+        setIsSelectionMode(false)
+        setSelectedVideos([])
+      }, 3000)
+    }
   }
 
   const handleBeautifyCover = async () => {
