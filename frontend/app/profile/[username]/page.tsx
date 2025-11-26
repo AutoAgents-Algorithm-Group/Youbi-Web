@@ -36,27 +36,27 @@ export default function Profile() {
   const [originalCovers, setOriginalCovers] = useState<{ [videoId: string]: string }>({})
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // Beautify prompt templates - Focus on people and filters only, no text overlay
+  // Beautify prompt templates - Focus on subtle, natural enhancements
   const promptTemplates = {
     default: {
       name: 'Default Enhancement',
-      prompt: 'Enhance the people in this image with natural skin tone improvements, enhanced facial features clarity, and better lighting on faces. Apply professional color grading filters to improve overall image quality with vibrant but natural colors. Do NOT add any text or typography to the image.'
+      prompt: 'Apply subtle and natural enhancements to this image. For people: use minimal skin retouching (preserve natural texture and pores), gentle lighting adjustments, and maintain authentic facial features. Keep facial characteristics unchanged - preserve the natural look of the person. Apply professional color grading with natural, balanced tones. Do NOT add text or overlays. Preserve authenticity and realism.'
     },
     vibrant: {
       name: 'Vibrant Colors',
-      prompt: 'Apply vibrant color filters to enhance the people in the image. Improve skin tones, brighten faces, and boost saturation for a lively, eye-catching look. Focus on making the subjects stand out with enhanced lighting. Do NOT add any text to the image.'
+      prompt: 'Apply vibrant color filters while keeping people looking natural and authentic. Minimal skin adjustments (no aggressive smoothing), preserve natural facial features and textures. Focus on boosting colors in the environment/background. Keep people realistic with only subtle lighting improvements. Do NOT add text. Maintain natural appearance of subjects.'
     },
     professional: {
       name: 'Professional Polish',
-      prompt: 'Apply professional portrait enhancement focusing on the people in the image. Refine skin tones, enhance facial details, and apply balanced color grading filters. Create a polished, magazine-quality look without adding any text or overlays.'
+      prompt: 'Apply professional portrait enhancement with authenticity priority. For people: preserve natural skin texture, no aggressive smoothing, keep original facial features intact. Use balanced color grading and subtle lighting adjustments. The goal is a refined, magazine-quality look that still looks like the real person. Do NOT add text. Emphasize realism over heavy editing.'
     },
     dramatic: {
       name: 'Dramatic Impact',
-      prompt: 'Apply dramatic filters with high contrast and cinematic lighting focused on the people. Enhance facial features, add depth with shadows and highlights, and create an impactful visual style. Do NOT add text or typography.'
+      prompt: 'Apply dramatic filters with cinematic lighting while maintaining natural facial features. Use high contrast and atmospheric effects, but keep skin texture realistic (no excessive smoothing). Preserve the authentic look of people - they should still look like themselves. Focus drama on lighting and color, not facial alterations. Do NOT add text.'
     },
     minimal: {
       name: 'Minimal Clean',
-      prompt: 'Apply subtle, clean filters to enhance the people naturally. Gentle skin retouching, soft color correction, and refined lighting. Keep the enhancement minimal and authentic-looking. Do NOT add any text to the image.'
+      prompt: 'Apply ultra-subtle, barely-there enhancements. For people: preserve complete natural appearance including all skin texture, pores, and features. Only adjust lighting and colors very gently. The enhancement should be almost invisible - authenticity is the top priority. Do NOT add text. Keep everything looking exactly as natural as possible.'
     }
   }
 
@@ -71,7 +71,36 @@ export default function Profile() {
       setLoading(true)
       setError(null)
       const response = await profileApi.getProfile(username)
-      setProfile(response.data.profile)
+      const fetchedProfile = response.data.profile
+      setProfile(fetchedProfile)
+      
+      // Store original covers
+      const covers: { [videoId: string]: string } = {}
+      fetchedProfile.videos.forEach(video => {
+        covers[video.id] = video.cover
+      })
+      setOriginalCovers(covers)
+      
+      // Auto-enter selection mode
+      setIsSelectionMode(true)
+      
+      // Find the first (latest) unenhanced post
+      const firstUnenhancedVideo = fetchedProfile.videos.find(video => {
+        const isEnhanced = video.cover.includes('faas-output-image') || 
+                          video.cover.includes('jiekou.ai') || 
+                          video.cover.includes('proxy-image')
+        return !isEnhanced
+      })
+      
+      // Auto-select the first unenhanced video
+      if (firstUnenhancedVideo) {
+        setSelectedVideos([firstUnenhancedVideo.id])
+        
+        // Auto-start beautification after a brief delay
+        setTimeout(() => {
+          autoBeautifyFirstVideo(fetchedProfile, firstUnenhancedVideo.id)
+        }, 500)
+      }
     } catch (error: any) {
       console.error('Failed to fetch profile:', error)
       const errorMessage = error.response?.data?.message || 'Failed to fetch TikTok info, please try again later'
@@ -126,6 +155,96 @@ export default function Profile() {
       '🎯 Optimizing for maximum impact...'
     ]
     return messages[Math.floor(Math.random() * messages.length)]
+  }
+
+  const autoBeautifyFirstVideo = async (currentProfile: TikTokProfile, videoId: string) => {
+    const funMessages = [
+      '✨ Auto-enhancing your latest post...',
+      '🎨 Working some AI magic on this cover...',
+      '🚀 Making this thumbnail shine...',
+      '💫 Beautifying in the background...',
+      '🎭 Auto-pilot: Enhancement mode activated...'
+    ]
+
+    const getRandomMessage = () => funMessages[Math.floor(Math.random() * funMessages.length)]
+
+    const videoIndex = currentProfile.videos.findIndex(v => v.id === videoId)
+    if (videoIndex === -1) return
+
+    const video = currentProfile.videos[videoIndex]
+    
+    try {
+      setIsProcessing(true)
+      setProcessingProgress(getRandomMessage())
+
+      const originalCover = video.cover
+      const coverImage = originalCover.includes('/api/proxy-image?url=')
+        ? decodeURIComponent(originalCover.split('url=')[1]?.split('&')[0] || originalCover)
+        : originalCover
+      
+      const prompt = promptTemplates[selectedPromptTemplate as keyof typeof promptTemplates]?.prompt || promptTemplates.default.prompt
+      
+      const editResponse = await imageApi.editImage(coverImage, prompt)
+      const taskId = editResponse.data.taskId
+
+      // Poll for result
+      let attempts = 0
+      const maxAttempts = 30
+      let beautified = false
+
+      while (attempts < maxAttempts && !beautified) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        try {
+          const resultResponse = await imageApi.getTaskResult(taskId)
+          const { status, images } = resultResponse.data
+
+          if (status === 'TASK_STATUS_SUCCEED' && images.length > 0) {
+            const beautifiedImage = images[0].image_url
+            const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(beautifiedImage)}&t=${Date.now()}`
+            
+            setProfile(prev => {
+              if (!prev) return prev
+              const updatedVideos = [...prev.videos]
+              updatedVideos[videoIndex] = {
+                ...updatedVideos[videoIndex],
+                cover: proxyUrl
+              }
+              return {
+                ...prev,
+                videos: updatedVideos
+              }
+            })
+
+            setProcessingProgress('✅ Enhancement complete!')
+            setTimeout(() => {
+              setIsProcessing(false)
+              setProcessingProgress('')
+            }, 2000)
+            
+            beautified = true
+          } else if (status === 'TASK_STATUS_FAILED') {
+            throw new Error('Enhancement task failed')
+          }
+          
+          attempts++
+        } catch (pollError) {
+          console.error('Poll error:', pollError)
+          attempts++
+        }
+      }
+
+      if (!beautified) {
+        throw new Error('Enhancement timed out')
+      }
+    } catch (error) {
+      console.error('Auto-beautify failed:', error)
+      setProcessingProgress('❌ Auto-enhancement failed. Please try manual selection.')
+      setTimeout(() => {
+        setIsProcessing(false)
+        setProcessingProgress('')
+      }, 3000)
+    }
   }
 
   const handleBeautifySelected = async () => {
@@ -476,17 +595,29 @@ export default function Profile() {
                 </div>
               )}
 
-              {/* Right: Batch enhance button (only show in selection mode) */}
-              {isSelectionMode && selectedVideos.length > 0 && (
+              {/* Right side buttons container */}
+              <div className="flex items-center gap-3">
+                {/* Batch enhance button (only show in selection mode) */}
+                {isSelectionMode && selectedVideos.length > 0 && (
+                  <button
+                    onClick={handleBeautifySelected}
+                    disabled={isProcessing}
+                    className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full font-medium hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Enhance {selectedVideos.length}</span>
+                  </button>
+                )}
+                
+                {/* Upload button (demo placeholder) */}
                 <button
-                  onClick={handleBeautifySelected}
-                  disabled={isProcessing}
-                  className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full font-medium hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleUploadClick}
+                  className="flex items-center gap-2 px-5 py-2 bg-gray-100 text-gray-700 border-2 border-gray-300 rounded-full font-medium hover:bg-gray-200 transition"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Enhance {selectedVideos.length}</span>
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden sm:inline">Upload</span>
                 </button>
-              )}
+              </div>
             </div>
           </div>
         </div>

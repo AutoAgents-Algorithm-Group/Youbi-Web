@@ -57,13 +57,49 @@ export default function CreatePage() {
         {/* Main Profile Enhancement Card with Input */}
         <div className="mb-8">
           <div className="w-full bg-white rounded-3xl shadow-lg overflow-hidden">
-            {/* Large Image Container */}
-            <div className="relative w-full aspect-[16/9] overflow-hidden bg-gradient-to-br from-primary to-pink-500">
-              <img 
-                src="/profile.png" 
-                alt="Profile Enhancement"
-                className="w-full h-full object-cover"
-              />
+            {/* Before/After Comparison Container */}
+            <div className="relative w-full aspect-[16/9] overflow-hidden bg-gray-100">
+              <div className="flex h-full">
+                {/* Before (Left Half) */}
+                <div className="w-1/2 relative bg-gray-200 flex items-center justify-center border-r-2 border-white">
+                  <div className="absolute top-4 left-4 bg-gray-700/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium">
+                    Before
+                  </div>
+                  {/* Placeholder for before image - can be replaced with actual image */}
+                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
+                    <div className="text-center p-8">
+                      <div className="w-32 h-32 mx-auto mb-4 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                        <span className="text-6xl">📷</span>
+                      </div>
+                      <p className="text-gray-600 font-medium">Original Cover</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* After (Right Half) */}
+                <div className="w-1/2 relative bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center">
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-primary px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                    <span className="text-lg">✨</span>
+                    <span>After</span>
+                  </div>
+                  {/* Placeholder for after image - can be replaced with actual image */}
+                  <div className="w-full h-full bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center">
+                    <div className="text-center p-8">
+                      <div className="w-32 h-32 mx-auto mb-4 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse">
+                        <span className="text-6xl">✨</span>
+                      </div>
+                      <p className="text-white font-medium">AI Enhanced</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Center Divider with Arrow */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                <div className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center">
+                  <ArrowRight className="w-6 h-6 text-primary" />
+                </div>
+              </div>
             </div>
             
             {/* Content with Input */}
