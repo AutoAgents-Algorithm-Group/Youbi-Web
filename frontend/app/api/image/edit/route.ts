@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
           'Authorization': IMAGE_API_KEY,
           'Content-Type': 'application/json'
         },
-        timeout: 30000
+        timeout: 60000 // Increase timeout to 60 seconds
       }
     );
 

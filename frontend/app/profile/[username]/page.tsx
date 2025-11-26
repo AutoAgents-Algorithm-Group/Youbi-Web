@@ -40,23 +40,23 @@ export default function Profile() {
   const promptTemplates = {
     default: {
       name: 'Default Enhancement',
-      prompt: 'Apply subtle and natural enhancements to this image. For people: use minimal skin retouching (preserve natural texture and pores), gentle lighting adjustments, and maintain authentic facial features. Keep facial characteristics unchanged - preserve the natural look of the person. Apply professional color grading with natural, balanced tones. Do NOT add text or overlays. Preserve authenticity and realism.'
+      prompt: 'Apply subtle natural enhancements. Minimal skin retouching preserving texture. Gentle lighting and balanced color grading. Maintain authentic facial features. No text overlays.'
     },
     vibrant: {
       name: 'Vibrant Colors',
-      prompt: 'Apply vibrant color filters while keeping people looking natural and authentic. Minimal skin adjustments (no aggressive smoothing), preserve natural facial features and textures. Focus on boosting colors in the environment/background. Keep people realistic with only subtle lighting improvements. Do NOT add text. Maintain natural appearance of subjects.'
+      prompt: 'Vibrant color filters with natural people. Minimal skin adjustments, preserve facial features. Focus on environmental colors. Subtle lighting improvements. No text.'
     },
     professional: {
       name: 'Professional Polish',
-      prompt: 'Apply professional portrait enhancement with authenticity priority. For people: preserve natural skin texture, no aggressive smoothing, keep original facial features intact. Use balanced color grading and subtle lighting adjustments. The goal is a refined, magazine-quality look that still looks like the real person. Do NOT add text. Emphasize realism over heavy editing.'
+      prompt: 'Professional portrait enhancement with authenticity. Preserve natural skin texture, original facial features. Balanced color grading, subtle lighting. Refined magazine-quality look. No text.'
     },
     dramatic: {
       name: 'Dramatic Impact',
-      prompt: 'Apply dramatic filters with cinematic lighting while maintaining natural facial features. Use high contrast and atmospheric effects, but keep skin texture realistic (no excessive smoothing). Preserve the authentic look of people - they should still look like themselves. Focus drama on lighting and color, not facial alterations. Do NOT add text.'
+      prompt: 'Dramatic cinematic lighting while maintaining natural faces. High contrast, atmospheric effects. Realistic skin texture. Preserve authentic appearance. No text.'
     },
     minimal: {
       name: 'Minimal Clean',
-      prompt: 'Apply ultra-subtle, barely-there enhancements. For people: preserve complete natural appearance including all skin texture, pores, and features. Only adjust lighting and colors very gently. The enhancement should be almost invisible - authenticity is the top priority. Do NOT add text. Keep everything looking exactly as natural as possible.'
+      prompt: 'Ultra-subtle barely-visible enhancements. Complete natural appearance including skin texture. Very gentle lighting and color adjustments. Maximum authenticity. No text.'
     }
   }
 
@@ -184,16 +184,28 @@ export default function Profile() {
       
       const prompt = promptTemplates[selectedPromptTemplate as keyof typeof promptTemplates]?.prompt || promptTemplates.default.prompt
       
+      setProcessingProgress('📡 Submitting to AI enhancement service...')
       const editResponse = await imageApi.editImage(coverImage, prompt)
+      
+      if (!editResponse.data.taskId) {
+        throw new Error('Failed to get task ID from API')
+      }
+      
       const taskId = editResponse.data.taskId
+      setProcessingProgress('⏳ AI is processing your image...')
 
-      // Poll for result
+      // Poll for result with better progress indication
       let attempts = 0
-      const maxAttempts = 30
+      const maxAttempts = 40 // Increase max attempts to 40 seconds
       let beautified = false
 
       while (attempts < maxAttempts && !beautified) {
         await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // Update progress message every 10 seconds
+        if (attempts % 10 === 0 && attempts > 0) {
+          setProcessingProgress(`⏳ Still working... (${attempts}s elapsed)`)
+        }
         
         try {
           const resultResponse = await imageApi.getTaskResult(taskId)
@@ -224,7 +236,7 @@ export default function Profile() {
             
             beautified = true
           } else if (status === 'TASK_STATUS_FAILED') {
-            throw new Error('Enhancement task failed')
+            throw new Error('Enhancement task failed on server')
           }
           
           attempts++
@@ -235,15 +247,26 @@ export default function Profile() {
       }
 
       if (!beautified) {
-        throw new Error('Enhancement timed out')
+        throw new Error('Enhancement timed out after 40 seconds')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auto-beautify failed:', error)
-      setProcessingProgress('❌ Auto-enhancement failed. Please try manual selection.')
+      
+      // Provide more specific error messages
+      let errorMessage = '❌ Auto-enhancement failed.'
+      if (error.message?.includes('timeout')) {
+        errorMessage = '⏱️ Request timed out. The AI service might be busy. Try again or select manually.'
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage = '🌐 Network error. Please check your connection.'
+      } else if (error.response?.status === 500) {
+        errorMessage = '⚠️ AI service is temporarily unavailable. Please try manual enhancement.'
+      }
+      
+      setProcessingProgress(errorMessage)
       setTimeout(() => {
         setIsProcessing(false)
         setProcessingProgress('')
-      }, 3000)
+      }, 5000) // Show error for 5 seconds
     }
   }
 
