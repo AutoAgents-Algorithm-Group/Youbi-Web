@@ -61,34 +61,28 @@ export default function CreatePage() {
             <div className="relative w-full aspect-[16/9] overflow-hidden bg-gray-100">
               <div className="flex h-full">
                 {/* Before (Left Half) */}
-                <div className="w-1/2 relative bg-gray-200 flex items-center justify-center border-r-2 border-white">
-                  {/* Placeholder for before image - can be replaced with actual image */}
-                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
-                    <div className="text-center p-8">
-                      <div className="w-32 h-32 mx-auto mb-4 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-6xl">📷</span>
-                      </div>
-                      <p className="text-gray-600 font-medium">Original Cover</p>
-                    </div>
-                  </div>
-                  {/* Before Badge - moved after content for higher z-index */}
+                <div className="w-1/2 relative bg-gray-200 flex items-center justify-center border-r-2 border-white overflow-hidden">
+                  {/* Before Image */}
+                  <img 
+                    src="/before.jpeg" 
+                    alt="Before Enhancement"
+                    className="w-full h-full object-cover object-center"
+                  />
+                  {/* Before Badge */}
                   <div className="absolute top-4 left-4 bg-gray-700/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium shadow-lg z-20">
                     Before
                   </div>
                 </div>
                 
                 {/* After (Right Half) */}
-                <div className="w-1/2 relative bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center">
-                  {/* Placeholder for after image - can be replaced with actual image */}
-                  <div className="w-full h-full bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center">
-                    <div className="text-center p-8">
-                      <div className="w-32 h-32 mx-auto mb-4 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse">
-                        <span className="text-6xl">✨</span>
-                      </div>
-                      <p className="text-white font-medium">AI Enhanced</p>
-                    </div>
-                  </div>
-                  {/* After Badge - moved after content for higher z-index */}
+                <div className="w-1/2 relative bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center overflow-hidden">
+                  {/* After Image */}
+                  <img 
+                    src="/after.jpeg" 
+                    alt="After Enhancement"
+                    className="w-full h-full object-cover object-center"
+                  />
+                  {/* After Badge */}
                   <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-primary px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1 shadow-lg z-20">
                     <span className="text-lg">✨</span>
                     <span>After</span>

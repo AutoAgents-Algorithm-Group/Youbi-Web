@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Send, Sparkles, MessageCircle, X, Minimize2, Upload } from 'lucide-react'
 import { profileApi, imageApi } from '@/lib/api-client'
 import type { TikTokProfile, ChatMessage } from '@/lib/types/youbi'
@@ -10,7 +10,11 @@ import ChatWindow from '@/components/youbi/ChatWindow'
 
 export default function Profile() {
   const params = useParams()
+  const router = useRouter()
   const username = params.username as string
+  
+  // Andrew's avatar
+  const andrewAvatar = 'https://api.dicebear.com/7.x/bottts/svg?seed=Andrew&backgroundColor=b6e3f4'
   
   const [profile, setProfile] = useState<TikTokProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -767,13 +771,17 @@ export default function Profile() {
         )}
       </div>
 
-      {/* 右下角浮窗按钮 - 移到中间右边 */}
+      {/* 右下角浮窗按钮 - 移到中间右边 - 带 Andrew 头像 */}
       {!isChatOpen && (
         <button
           onClick={() => setIsChatOpen(true)}
-          className="fixed top-1/2 right-6 transform -translate-y-1/2 w-16 h-16 bg-gradient-to-r from-primary to-pink-500 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-110 flex items-center justify-center z-50 animate-pulse"
+          className="fixed top-1/2 right-6 transform -translate-y-1/2 w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-110 flex items-center justify-center z-50 animate-pulse border-4 border-white overflow-hidden p-0"
         >
-          <MessageCircle className="w-8 h-8" />
+          <img 
+            src={andrewAvatar} 
+            alt="Andrew" 
+            className="w-full h-full object-cover"
+          />
         </button>
       )}
 
@@ -781,11 +789,18 @@ export default function Profile() {
       {isChatOpen && (
         <div className="fixed top-1/2 right-6 transform -translate-y-1/2 w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-6rem)] bg-white rounded-2xl shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-300">
           {/* Floating window title bar */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-primary to-pink-500 text-white rounded-t-2xl">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5" />
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-t-2xl">
+            <button 
+              onClick={() => router.push('/agent/andrew')}
+              className="flex items-center gap-2 hover:bg-white/10 rounded-lg px-2 py-1 -ml-2 transition"
+            >
+              <img 
+                src={andrewAvatar} 
+                alt="Andrew" 
+                className="w-8 h-8 rounded-full border-2 border-white"
+              />
               <h3 className="font-semibold">Andrew - AI Butler</h3>
-            </div>
+            </button>
             <button
               onClick={() => setIsChatOpen(false)}
               className="p-1 hover:bg-white/20 rounded-full transition"

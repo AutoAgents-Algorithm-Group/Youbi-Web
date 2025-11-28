@@ -14,7 +14,11 @@ import {
   Settings,
   HelpCircle,
   User as UserIcon,
-  LogOut
+  LogOut,
+  Bell,
+  UserPlus,
+  Check,
+  X as CloseIcon
 } from 'lucide-react'
 
 interface Contact {
@@ -36,6 +40,18 @@ interface Message {
   type: 'text' | 'system'
 }
 
+interface Notification {
+  id: string
+  type: 'friend_request' | 'system'
+  title: string
+  content: string
+  time: string
+  read: boolean
+  senderId?: string
+  senderName?: string
+  senderAvatar?: string
+}
+
 export default function ChatPage() {
   const [user] = useState({
     name: 'User',
@@ -45,22 +61,74 @@ export default function ChatPage() {
     points: 12500
   })
 
-  const [activeTab, setActiveTab] = useState<'1:1' | 'group'>('1:1')
+  const [activeTab, setActiveTab] = useState<'chats' | 'notifications'>('chats')
   const [selectedChat, setSelectedChat] = useState<Contact | null>(null)
   const [messageInput, setMessageInput] = useState('')
   const [showMenu, setShowMenu] = useState(false)
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([])
   const [isSending, setIsSending] = useState(false)
   
-  // Mock data
+  // Mock notifications data
+  const [notifications, setNotifications] = useState<Notification[]>([
+    {
+      id: '1',
+      type: 'friend_request',
+      title: 'Friend Request',
+      content: 'wants to add you as a friend',
+      time: '2m ago',
+      read: false,
+      senderId: 'alex_dev',
+      senderName: 'Alex Johnson',
+      senderAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex'
+    },
+    {
+      id: '2',
+      type: 'friend_request',
+      title: 'Friend Request',
+      content: 'wants to add you as a friend',
+      time: '1h ago',
+      read: false,
+      senderId: 'emma_design',
+      senderName: 'Emma Wilson',
+      senderAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma'
+    },
+    {
+      id: '3',
+      type: 'system',
+      title: 'System Update',
+      content: 'New AI enhancement features are now available! Try them out in Profile Enhancement.',
+      time: '3h ago',
+      read: false
+    },
+    {
+      id: '4',
+      type: 'system',
+      title: 'Weekly Summary',
+      content: 'Your content received 2.5K views this week! Keep up the great work!',
+      time: '1d ago',
+      read: true
+    }
+  ])
+  
+  // Mock data - combined all chats
   const [contacts] = useState<Contact[]>([
+    {
+      id: 'andrew',
+      name: 'Andrew',
+      username: 'AI Butler',
+      avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Andrew&backgroundColor=b6e3f4',
+      lastMessage: 'Hi! I\'m here to help you.',
+      lastMessageTime: '2m ago',
+      unread: 1,
+      type: '1:1'
+    },
     {
       id: '1',
       name: 'Sarah Johnson',
       username: '@sarah_j',
       avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
       lastMessage: 'Hey! How are you doing?',
-      lastMessageTime: '2m ago',
+      lastMessageTime: '5m ago',
       unread: 2,
       type: '1:1'
     },
@@ -104,7 +172,33 @@ export default function ChatPage() {
     }
   ])
 
-  const filteredContacts = contacts.filter(c => c.type === activeTab)
+  const unreadNotifications = notifications.filter(n => !n.read).length
+
+  const handleAcceptFriend = (notificationId: string) => {
+    setNotifications(prevNotifs => 
+      prevNotifs.map(n => 
+        n.id === notificationId 
+          ? { ...n, read: true, content: 'Friend request accepted' }
+          : n
+      )
+    )
+    // TODO: Implement actual friend request acceptance logic
+  }
+
+  const handleRejectFriend = (notificationId: string) => {
+    setNotifications(prevNotifs => 
+      prevNotifs.filter(n => n.id !== notificationId)
+    )
+    // TODO: Implement actual friend request rejection logic
+  }
+
+  const handleMarkAsRead = (notificationId: string) => {
+    setNotifications(prevNotifs => 
+      prevNotifs.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
+      )
+    )
+  }
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,54 +220,56 @@ export default function ChatPage() {
     setIsSending(true)
     
     try {
-      // Call AI Agent API
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: userMessage,
-          conversationHistory: conversationHistory
+      // Call AI Agent API (only for Andrew chat)
+      if (selectedChat?.id === 'andrew') {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: userMessage,
+            conversationHistory: conversationHistory
+          })
         })
-      })
-      
-      const data = await response.json()
-      
-      if (data.success && data.message) {
-        // Add agent response to UI
-        setMessages(prev => [...prev, {
-          id: `msg_${Date.now()}_bot`,
-          senderId: data.agent.type || 'andrew',
-          content: data.message,
-          timestamp: new Date(),
-          type: 'text'
-        }])
         
-        // Update conversation history
-        setConversationHistory(prev => [
-          ...prev,
-          { role: 'user', content: userMessage },
-          { role: 'assistant', content: data.message }
-        ])
+        const data = await response.json()
+        
+        if (data.success && data.message) {
+          setMessages(prev => [...prev, {
+            id: `msg_${Date.now()}_bot`,
+            senderId: data.agent.type || 'andrew',
+            content: data.message,
+            timestamp: new Date(),
+            type: 'text'
+          }])
+          
+          setConversationHistory(prev => [
+            ...prev,
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: data.message }
+          ])
+        }
       } else {
-        // Fallback message
-        setMessages(prev => [...prev, {
-          id: `msg_${Date.now()}_bot`,
-          senderId: 'andrew',
-          content: 'I apologize, but I\'m having trouble responding right now. Please try again.',
-          timestamp: new Date(),
-          type: 'text'
-        }])
+        // For other contacts, simulate a response
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: `msg_${Date.now()}_reply`,
+            senderId: selectedChat?.id || 'other',
+            content: 'Thanks for your message! I\'ll get back to you soon.',
+            timestamp: new Date(),
+            type: 'text'
+          }])
+        }, 1000)
       }
     } catch (error) {
       console.error('Failed to send message:', error)
       setMessages(prev => [...prev, {
-        id: `msg_${Date.now()}_bot`,
-        senderId: 'andrew',
-        content: 'I apologize, but I\'m having trouble connecting right now. Please try again.',
+        id: `msg_${Date.now()}_error`,
+        senderId: 'system',
+        content: 'Failed to send message. Please try again.',
         timestamp: new Date(),
-        type: 'text'
+        type: 'system'
       }])
     } finally {
       setIsSending(false)
@@ -285,64 +381,153 @@ export default function ChatPage() {
                 </button>
               </div>
 
-              {/* Tabs */}
+              {/* Tabs - Chats and Notifications */}
               <div className="flex gap-2 mb-4">
                 <button
-                  onClick={() => setActiveTab('1:1')}
-                  className={`flex-1 py-3 px-4 rounded-xl font-medium transition ${
-                    activeTab === '1:1'
+                  onClick={() => setActiveTab('chats')}
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium transition relative ${
+                    activeTab === 'chats'
                       ? 'bg-primary text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   <MessageCircle className="w-5 h-5 inline-block mr-2" />
-                  1:1 Chat
+                  Chats
                 </button>
                 <button
-                  onClick={() => setActiveTab('group')}
-                  className={`flex-1 py-3 px-4 rounded-xl font-medium transition ${
-                    activeTab === 'group'
+                  onClick={() => setActiveTab('notifications')}
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium transition relative ${
+                    activeTab === 'notifications'
                       ? 'bg-primary text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  <Users className="w-5 h-5 inline-block mr-2" />
-                  Group Chat
+                  <Bell className="w-5 h-5 inline-block mr-2" />
+                  Notifications
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadNotifications}
+                    </span>
+                  )}
                 </button>
               </div>
 
-              {/* Contact List */}
-              <div className="space-y-2">
-                {filteredContacts.map((contact) => (
-                  <button
-                    key={contact.id}
-                    onClick={() => setSelectedChat(contact)}
-                    className="w-full bg-white rounded-xl p-4 hover:shadow-md transition text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <img
-                          src={contact.avatar}
-                          alt={contact.name}
-                          className="w-12 h-12 rounded-full"
-                        />
-                        {contact.unread && contact.unread > 0 && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                            <span className="text-xs text-white font-bold">{contact.unread}</span>
+              {/* Content Area */}
+              {activeTab === 'chats' ? (
+                /* Contact List */
+                <div className="space-y-2">
+                  {contacts.map((contact) => (
+                    <button
+                      key={contact.id}
+                      onClick={() => setSelectedChat(contact)}
+                      className="w-full bg-white rounded-xl p-4 hover:shadow-md transition text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <img
+                            src={contact.avatar}
+                            alt={contact.name}
+                            className="w-12 h-12 rounded-full"
+                          />
+                          {contact.type === 'group' && (
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
+                              <Users className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                          {contact.unread && contact.unread > 0 && (
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                              <span className="text-xs text-white font-bold">{contact.unread}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="font-semibold text-gray-900 truncate">{contact.name}</h3>
+                            <span className="text-xs text-gray-500">{contact.lastMessageTime}</span>
                           </div>
+                          <p className="text-sm text-gray-500 truncate">{contact.lastMessage}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                /* Notifications List */
+                <div className="space-y-2">
+                  {notifications.length === 0 ? (
+                    <div className="bg-white rounded-xl p-8 text-center">
+                      <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p className="text-gray-500">No notifications</p>
+                    </div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`bg-white rounded-xl p-4 ${
+                          !notification.read ? 'border-2 border-primary' : ''
+                        }`}
+                      >
+                        {notification.type === 'friend_request' ? (
+                          /* Friend Request */
+                          <div className="flex items-start gap-3">
+                            <img
+                              src={notification.senderAvatar}
+                              alt={notification.senderName}
+                              className="w-12 h-12 rounded-full flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <h4 className="font-semibold text-gray-900">{notification.senderName}</h4>
+                                  <p className="text-sm text-gray-600">{notification.content}</p>
+                                </div>
+                                <span className="text-xs text-gray-500 ml-2">{notification.time}</span>
+                              </div>
+                              {!notification.read && notification.content !== 'Friend request accepted' && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleAcceptFriend(notification.id)}
+                                    className="flex-1 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition flex items-center justify-center gap-1"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                    <span>Accept</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectFriend(notification.id)}
+                                    className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition flex items-center justify-center gap-1"
+                                  >
+                                    <CloseIcon className="w-4 h-4" />
+                                    <span>Decline</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          /* System Notification */
+                          <button
+                            onClick={() => handleMarkAsRead(notification.id)}
+                            className="w-full text-left"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <Bell className="w-6 h-6 text-blue-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between mb-1">
+                                  <h4 className="font-semibold text-gray-900">{notification.title}</h4>
+                                  <span className="text-xs text-gray-500 ml-2">{notification.time}</span>
+                                </div>
+                                <p className="text-sm text-gray-600">{notification.content}</p>
+                              </div>
+                            </div>
+                          </button>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold text-gray-900 truncate">{contact.name}</h3>
-                          <span className="text-xs text-gray-500">{contact.lastMessageTime}</span>
-                        </div>
-                        <p className="text-sm text-gray-500 truncate">{contact.lastMessage}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                    ))
+                  )}
+                </div>
+              )}
             </>
           ) : (
             /* Chat Window */
@@ -429,4 +614,5 @@ export default function ChatPage() {
     </div>
   )
 }
+
 
